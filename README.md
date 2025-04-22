@@ -6,10 +6,109 @@ My submissions for the 2025 Chart Challenge.
 
 ### 1 - Fractions
 
-![Day 1](/plots/1_fraction_column_mp.png)
+<p align="center">
+  <img width="70%" src="/plots/1_fraction_column_mp.png">
+</p>
+
+
 
 ### 2 - Slope
 
+<p align="center">
+  <img width="70%" src="/plots/2_slope.png">
+</p>
+
+
 ### 3 - Circular
 
-![Day 3](/plots/3_circles_Porto_Alegre.png)
+| <img src="/plots/3_circles_Porto Alegre.png">  |  <img src="/plots/3_circles_São Paulo.png"> |
+|:-------------------------:|:-------------------------:|
+| <img src="/plots/3_circles_Rio de Janeiro.png">  |  <img src="/plots/3_circles_Brasília_final.png"> |
+
+### 4 - Big or Small
+
+### 5 - Ranking
+
+<p align="center">
+  <img width="75%" src="/plots/5_ranking.png">
+</p>
+
+### 6 - Florence Nightingale
+
+## Distributions
+
+### 7 - Outliers
+
+<p align="center">
+  <img width="75%" src="/plots/7_outliers_mp.png">
+</p>
+
+### 8 - Histogram
+
+<p align="center">
+  <img width="75%" src="/plots/8_histograms.png">
+</p>
+
+### 9 - Diverging
+
+<p align="center">
+  <img width="90%" src="/plots/9_diverging.png">
+</p>
+
+### 10 - Multi-modal
+
+<p align="center">
+  <img width="70%" src="/plots/10_multimodal_3.png">
+</p>
+
+### 11 - Stripes
+
+<p align="center">
+  <img width="50%" src="/plots/11_stripes.png">
+</p>
+
+### 12 - Data.gov (data day)
+
+## Relationships
+
+### 13 - Clusters
+
+### 14 - Kinship
+
+### 15 - Complicated
+
+<p align="center">
+  <img width="75%" src="/plots/15_complicated.png">
+</p>
+
+### 16 - Negative
+
+<p align="center">
+  <img width="75%" src="/plots/16_negative.png">
+</p>
+
+### 17 - Birds
+
+### 18 El Pais (theme day)
+
+## Time Series
+
+### 19 - Smooth
+
+<p align="center">
+  <img width="75%" src="/plots/19_smoothing_2.png">
+</p>
+
+### 20 - Urbanization
+
+<p align="center">
+  <img width="75%" src="/plots/20_urbanization.png">
+</p>
+
+### 21 - Fossils
+
+### 22 - Stars
+
+### 23 - Log Scale
+
+### 24 - World Health Organization (data day)
