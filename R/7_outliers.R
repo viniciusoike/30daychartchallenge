@@ -46,8 +46,10 @@ subdat <- dat |>
 
 # Plot --------------------------------------------------------------------
 
-col1 <- met.brewer("Hokusai2", n = 12)[9]
-col2 <- met.brewer("Hokusai2", n = 12)[12]
+# fill color
+col1 <- met.brewer("Hokusai2", n = 12)[8]
+# line color
+col2 <- met.brewer("Hokusai2", n = 12)[11]
 
 text_avg <- str_wrap("Lages (SC), Alegrete (RS), and Belo Horizonte (MG) are all close to the average R$ 42,5k", 25)
 text_lowest <- str_wrap("Vargem Grande (MA) has lowest GDP per capita: R$ 7,5k.", 21)
@@ -57,8 +59,8 @@ text_highest <- str_wrap("Maricá (RJ) has the highest GDP per capita: R$ 551,9k
 # Vargem Grande 7500
 
 df_label <- tibble(
-  x = c(5.95, 3.7, 5.2),
-  y = c(0.32, 0.17, 0.52),
+  x = c(5.95, 3.7, 5.175),
+  y = c(0.36, 0.19, 0.52),
   label = c(text_highest, text_lowest, text_avg)
 )
 
@@ -95,8 +97,8 @@ p2 <- ggplot(subdat, aes(x = log10(gdppc))) +
   scale_x_continuous(
     breaks = log10(x_label),
     labels = x_label_fm,
-    limits = c(3.4, 6.1)) +
-  scale_y_continuous(breaks = NULL) +
+    limits = c(3.5, 6.05)) +
+  scale_y_continuous(NULL, breaks = NULL) +
   labs(
     title = "Wealth distribution across Brazilian cities",
     subtitle = "GDP per capita across Brazilian cities with over 50.000 inhabitants. Each dot represents, roughly, 2 cities.",
@@ -108,8 +110,9 @@ p2 <- ggplot(subdat, aes(x = log10(gdppc))) +
     panel.grid.minor = element_blank(),
     panel.background = element_rect(fill = offwhite, color = offwhite),
     plot.background = element_rect(fill = offwhite, color = offwhite),
-    panel.grid.major.x = element_line(color = "gray45"),
-    plot.margin = margin(10, 10, 10, 10, unit = "pt")
+    panel.grid.major.x = element_line(color = "gray45", linetype = 2),
+    plot.margin = margin(10, 10, 10, 10, unit = "pt"),
+    plot.title = element_text(size = 22)
   )
 
 offwhite <- "#f5f5f5"
@@ -141,7 +144,7 @@ p1 <- ggplot() +
   scale_y_continuous(
     breaks = x_label,
     labels = x_label_fm,
-    limits = c(3.4, 6.1)) +
+    limits = c(3.5, 6.05)) +
   theme_minimal(base_family = "Futura") +
   theme(
     panel.grid = element_blank(),
@@ -160,7 +163,9 @@ library(patchwork)
 
 panel <- (p2 / p1)
 
-final_plot <- panel + plot_layout(heights = c(0.9, 0.1))
+final_plot <- panel + plot_layout(heights = c(0.8, 0.2))
 final_plot
 
-cowplot::save_plot(here("plots/8_outlier.png"), final_plot, base_width = 11, base_height = 7.5)
+ggsave(here("plots/7_outlier.png"), final_plot, width = 7.32, height = 6.64, dpi = 300)
+
+cowplot::save_plot(here("plots/8_outlier.png"), final_plot, base_width = 8, base_height = 5.5)
