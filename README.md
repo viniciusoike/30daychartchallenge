@@ -96,31 +96,49 @@ My submissions for the 2025 Chart Challenge.
 ### 19 - Smooth
 
 <p align="center">
-  <img width="75%" src="/plots/19_smoothing_2.png">
+  <img width="80%" src="/plots/19_smoothing_2.png">
 </p>
 
 ### 20 - Urbanization
 
 <p align="center">
-  <img width="75%" src="/plots/20_urbanization.png">
+  <img width="80%" src="/plots/20_urbanization.png">
 </p>
 
 ### 21 - Fossils
 
 <p align="center">
-  <img width="75%" src="/plots/21_fossils.png">
+  <img width="80%" src="/plots/21_fossils.png">
 </p>
 
 ### 22 - Stars
 
 <p align="center">
-  <img width="85%" src="/plots/22_stars.png">
+  <img width="80%" src="/plots/22_stars.png">
 </p>
 
 ### 23 - Log Scale
 
 <p align="center">
-  <img width="75%" src="/plots/23_log_scale.png">
+  <img width="80%" src="/plots/23_log_scale.png">
 </p>
 
 ### 24 - World Health Organization (data day)
+
+## Uncertainties
+
+### 25 - Risk
+
+### 26 - Monochrome
+
+<p align="center">
+  <img width="80%" src="/plots/26_monochrome.png">
+</p>
+
+### 27 - Noise
+
+### 28 - Inclusion
+
+### 29 - Extraterrestrial 
+
+### 30 - National Geographic (theme day)
