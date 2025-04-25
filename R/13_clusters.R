@@ -17,7 +17,7 @@ library(ragg)
 font <- "DIN Alternate"
 
 scale_option = "inferno"
-scale_name = "Job Acessibility Index (30 min. car)"
+scale_name = "Job Accessibility Index (30 min. car)"
 scale_breaks = c(0.2, 0.8)
 scale_labels = c("Less Job\nOpportunities", "More Job\nOpportunities")
 
@@ -59,14 +59,14 @@ plot_map <- ggplot() +
     legend.background = element_rect(fill = offwhite, color = offwhite),
     legend.position = "top",
     legend.title.position = "top",
-    legend.title = element_text(size = 14, hjust = 0.5),
+    legend.title = element_text(size = 12, hjust = 0.5),
     legend.justification = 0.5,
     legend.key.size = unit(0.5, "cm"),
     legend.key.width = unit(1.25, "cm"),
     legend.text = element_text(size = 10),
     legend.margin = margin(),
     plot.margin = margin(10, 5, 5, 10),
-    plot.title = element_text(size = 18, hjust = 0.5),
+    plot.title = element_text(size = 22, hjust = 0.5),
     plot.subtitle = element_text(size = 10, hjust = 0.5)
   )
 
