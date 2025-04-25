@@ -73,6 +73,10 @@ My submissions for the 2025 Chart Challenge.
 
 ### 13 - Clusters
 
+<p align="center">
+  <img width="50%" src="/plots/13_clusters.png">
+</p>
+
 ### 14 - Kinship
 
 ### 15 - Complicated
