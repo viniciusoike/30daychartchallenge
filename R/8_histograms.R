@@ -90,7 +90,7 @@ plot_histogram <- function(country, text_x = 5, text_y = 22.5) {
       panel.background = element_rect(color = offwhite, fill = offwhite),
       panel.grid.minor = element_blank(),
       panel.grid.major = element_line(linetype = 2),
-      axis.text.x = element_text(size = 12),
+      axis.text = element_text(size = 12),
       axis.title.x = element_text(size = 14),
       plot.subtitle = element_text(size = 14, hjust = 0.5, family = font_title)
     )
@@ -169,7 +169,7 @@ panel <- panel + plot_annotation(
   subtitle = "Annual GDP per capita growth (%) from 1950 to 2022 among selected countries. Both x and y axis are fixed to facilitate cross-country comparisons.",
   caption = "Source: Maddison Project (2024).") &
   theme(
-    plot.title = element_text(family = font_title, size = 22),
+    plot.title = element_text(family = font_title, size = 32),
     plot.subtitle = element_text(family = font_text, size = 14, color = "gray20"),
     plot.caption = element_text(family = font_text, size = 12, color = "gray40"),
     plot.background = element_rect(color = offwhite, fill = offwhite)
