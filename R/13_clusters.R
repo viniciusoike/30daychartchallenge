@@ -51,7 +51,7 @@ plot_map <- ggplot() +
     labels = scale_labels
   ) +
   coord_sf(xlim = c(-46.82, -46.37), ylim = c(-23.98, -23.365)) +
-  ggtitle("Acessibility to Opportunities in São Paulo") +
+  ggtitle("Job Access in São Paulo") +
   ggthemes::theme_map(base_family = font) +
   theme(
     panel.background = element_rect(fill = offwhite, color = offwhite),
