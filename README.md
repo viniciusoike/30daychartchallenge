@@ -107,8 +107,20 @@ My submissions for the 2025 Chart Challenge.
 
 ### 21 - Fossils
 
+<p align="center">
+  <img width="75%" src="/plots/21_fossils.png">
+</p>
+
 ### 22 - Stars
 
+<p align="center">
+  <img width="85%" src="/plots/22_stars.png">
+</p>
+
 ### 23 - Log Scale
+
+<p align="center">
+  <img width="75%" src="/plots/23_log_scale.png">
+</p>
 
 ### 24 - World Health Organization (data day)
