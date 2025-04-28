@@ -1,23 +1,35 @@
-library(tidyverse)
+library(ggplot2)
+library(dplyr)
 library(showtext)
 library(ggtext)
+library(sf)
+library(rvest)
 
+import::from(zoo, rollmean)
+import::from(geobr, read_state)
+import::from(tidyr, pivot_longer)
+
+
+# Define font
+# Candidates:
 # PT SANS
 # JOST
 # REEM KUFI
 sysfonts::font_add_google("Jost", "Jost")
 showtext_auto()
-
 font <- "Jost"
 
-url <- "http://www.obt.inpe.br/OBT/assuntos/programas/amazonia/prodes"
-library(rvest)
+# Data --------------------------------------------------------------------
 
+# Scrape the data from INPE
+url <- "http://www.obt.inpe.br/OBT/assuntos/programas/amazonia/prodes"
+
+# Parss site and get table
 html_prodes <- read_html(url)
 # Get tables from HTML
 tab_prodes <- prodes |>
-  html_table() |>
-  pluck(2)
+  html_table() %>%
+  .[[2]]
 
 # Remove first and last row
 dat <- as_tibble(as.matrix(tab_prodes[c(-1, -nrow(tab_prodes)), ]))
@@ -33,14 +45,14 @@ deforestation <- dat |>
   # Convert to long
   pivot_longer(cols = -"year", names_to = "abbrev_state", values_to = "area") |>
   # Compute grouped trend
-  mutate(trend = zoo::rollmean(area, k = 5, fill = NA), .by = "abbrev_state")
+  mutate(trend = rollmean(area, k = 5, fill = NA), .by = "abbrev_state")
 
 # Separate a data set for the column plot
 deforestation_total <- deforestation |>
   filter(abbrev_state == "total")
 
 # Import shapefile of Brazilian states
-states <- geobr::read_state()
+states <- read_state()
 
 # Separate a data set for the map (state data)
 dat_state23 <- deforestation |>
@@ -55,7 +67,7 @@ states_deforest <- states_deforest |>
 # Plot elements -----------------------------------------------------------
 
 # Get palette from ggredist
-ggredist::ggredist$natgeo
+# ggredist::ggredist$natgeo
 
 pal <- c("#abafd0", "#e8b3a5", "#fded7e", "#b6c572", "#efc965", "#fcf3e2", "gray40", "#000000", "#fefefe")
 
@@ -67,12 +79,13 @@ text_axis <- tibble(
   label = ifelse(y == 30000, paste(format(y, big.mark = "."), "km²"), format(y, big.mark = "."))
   )
 
-title = '<span style = "color: #FFD51C;">|</span><span> DEFORESTATION IN THE AMAZON RAINFOREST</span>'
+title <- '<span style = "color: #FFD51C;">|</span><span> DEFORESTATION IN THE AMAZON RAINFOREST</span>'
+
+# Plots -------------------------------------------------------------------
 
 plot_col <- ggplot(deforestation_total, aes(year, area)) +
   geom_col(fill = pal[5]) +
   geom_line(aes(year, trend), alpha = 0.8, linewidth = 1) +
-  geom_hline(yintercept = 0) +
   geom_text(
     data = text_axis,
     aes(x, y, label = label),
@@ -83,6 +96,7 @@ plot_col <- ggplot(deforestation_total, aes(year, area)) +
     hjust = 0,
     color = colors[2]
   ) +
+  geom_hline(yintercept = 0) +
   annotate(
     "label",
     x = 2014,
@@ -107,7 +121,6 @@ plot_col <- ggplot(deforestation_total, aes(year, area)) +
     x = NULL,
     y = NULL,
     title = title,
-    #title = "| DEFORESTATION IN THE AMAZON RAINFOREST",
     subtitle = "Annual forest loss shows a slight downward trend after rising in the mid-2010s.\nThe data was last updated in November 2024.",
     caption = "Source: INPE / PRODES"
     ) +
@@ -156,8 +169,3 @@ showtext_opts(dpi = 300)
 showtext_auto()
 ggsave("plots/30_national_geographic.png", plot_col, width = 7.76, height = 4.36, dpi = 300)
 ggsave("plots/30_national_geographic_map.png", plot_map, width = 7, height = 7, dpi = 300)
-
-library(patchwork)
-
-plot_col
-plot_map
