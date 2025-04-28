@@ -142,7 +142,7 @@ My submissions for the 2025 Chart Challenge.
 ### 27 - Noise
 
 <p align="center">
-  <img width="80%" src="/plots/27_noise.png">
+  <img width="50%" src="/plots/27_noise.png">
 </p>
 
 ### 28 - Inclusion
