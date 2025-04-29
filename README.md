@@ -7,7 +7,7 @@ My submissions for the 2025 Chart Challenge.
 ### 1 - Fractions
 
 <p align="center">
-  <img width="70%" src="/plots/1_fraction_column_mp.png">
+  <img width="80%" src="/plots/1_fraction_column_mp.png">
 </p>
 
 
@@ -15,7 +15,7 @@ My submissions for the 2025 Chart Challenge.
 ### 2 - Slope
 
 <p align="center">
-  <img width="70%" src="/plots/2_slope.png">
+  <img width="80%" src="/plots/2_slope.png">
 </p>
 
 
@@ -30,7 +30,7 @@ My submissions for the 2025 Chart Challenge.
 ### 5 - Ranking
 
 <p align="center">
-  <img width="75%" src="/plots/5_ranking.png">
+  <img width="80%" src="/plots/5_ranking.png">
 </p>
 
 ### 6 - Florence Nightingale
@@ -40,13 +40,13 @@ My submissions for the 2025 Chart Challenge.
 ### 7 - Outliers
 
 <p align="center">
-  <img width="75%" src="/plots/7_outliers_mp.png">
+  <img width="80%" src="/plots/7_outliers_mp.png">
 </p>
 
 ### 8 - Histogram
 
 <p align="center">
-  <img width="75%" src="/plots/8_histograms.png">
+  <img width="80%" src="/plots/8_histograms.png">
 </p>
 
 ### 9 - Diverging
@@ -58,7 +58,7 @@ My submissions for the 2025 Chart Challenge.
 ### 10 - Multi-modal
 
 <p align="center">
-  <img width="70%" src="/plots/10_multimodal_3.png">
+  <img width="80%" src="/plots/10_multimodal_3.png">
 </p>
 
 ### 11 - Stripes
@@ -82,13 +82,13 @@ My submissions for the 2025 Chart Challenge.
 ### 15 - Complicated
 
 <p align="center">
-  <img width="75%" src="/plots/15_complicated.png">
+  <img width="80%" src="/plots/15_complicated.png">
 </p>
 
 ### 16 - Negative
 
 <p align="center">
-  <img width="75%" src="/plots/16_negative.png">
+  <img width="80%" src="/plots/16_negative.png">
 </p>
 
 ### 17 - Birds
