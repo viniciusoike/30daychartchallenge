@@ -86,7 +86,7 @@ My submissions for the 2025 Chart Challenge.
 ### 15 - Complicated
 
 <p align="center">
-  <img width="80%" src="/plots/15_complicated.png">
+  <img width="50%" src="/plots/15_complicated.png">
 </p>
 
 ### 16 - Negative
