@@ -27,6 +27,10 @@ My submissions for the 2025 Chart Challenge.
 
 ### 4 - Big or Small
 
+<p align="center">
+  <img width="50%" src="/plots/4_big_small.png">
+</p>
+
 ### 5 - Ranking
 
 <p align="center">
