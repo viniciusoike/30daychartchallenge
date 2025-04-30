@@ -151,6 +151,10 @@ My submissions for the 2025 Chart Challenge.
 
 ### 28 - Inclusion
 
+<p align="center">
+  <img width="80%" src="/plots/28_inclusion.png">
+</p>
+
 ### 29 - Extraterrestrial
 
 <p align="center">
