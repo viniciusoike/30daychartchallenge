@@ -27,7 +27,7 @@ url <- "http://www.obt.inpe.br/OBT/assuntos/programas/amazonia/prodes"
 # Parss site and get table
 html_prodes <- read_html(url)
 # Get tables from HTML
-tab_prodes <- prodes |>
+tab_prodes <- html_prodes |>
   html_table() %>%
   .[[2]]
 
@@ -169,3 +169,36 @@ showtext_opts(dpi = 300)
 showtext_auto()
 ggsave("plots/30_national_geographic.png", plot_col, width = 7.76, height = 4.36, dpi = 300)
 ggsave("plots/30_national_geographic_map.png", plot_map, width = 7, height = 7, dpi = 300)
+
+
+
+# Incomplete ranking of states --------------------------------------------
+
+# rank_deforest <- deforestation |>
+#   filter(abbrev_state != "total") |>
+#   group_by(year) |>
+#   mutate(rank = rank(-area)) |>
+#   slice_min(rank, n = 6)
+#
+# wide_rank_deforest <- rank_deforest |>
+#   tidyr::pivot_wider(
+#     id_cols = "year",
+#     names_from = "abbrev_state",
+#     values_from = "rank"
+#   )
+#
+#
+# library(ggbump)
+# pal <- c("#abafd0", "#e8b3a5", "#fded7e", "#b6c572", "#efc965", "#fcf3e2", "gray40", "#000000", "#fefefe")
+#
+# ggplot(rank_deforest, aes(year, rank, color = abbrev_state, fill = abbrev_state)) +
+#   geom_bump(linewidth = 1.2) +
+#   geom_point(shape = 21, color = "white", size = 3) +
+#   scale_y_reverse() +
+#   scale_color_manual(values = pal) +
+#   scale_fill_manual(values = pal) +
+#   theme_minimal() +
+#   theme(
+#     panel.grid.minor = element_blank()
+#   )
+
