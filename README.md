@@ -27,6 +27,10 @@ My submissions for the 2025 Chart Challenge.
 
 ### 4 - Big or Small
 
+<p align="center">
+  <img width="50%" src="/plots/4_big_small.png">
+</p>
+
 ### 5 - Ranking
 
 <p align="center">
@@ -147,6 +151,15 @@ My submissions for the 2025 Chart Challenge.
 
 ### 28 - Inclusion
 
-### 29 - Extraterrestrial 
+### 29 - Extraterrestrial
+
+<p align="center">
+  <img width="80%" src="/plots/29_extraterrestrial.png">
+</p>
 
 ### 30 - National Geographic (theme day)
+
+<p align="center">
+  <img width="80%" src="/plots/30_national_geographic.png">
+</p>
+
