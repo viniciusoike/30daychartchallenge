@@ -53,7 +53,7 @@ get_boxoffice <- function(url) {
 safe_get_boxoffice <- purrr::safely(get_boxoffice)
 ls_boxoffice <- purrr::map(url_mojo, safe_get_boxoffice)
 # Check failures
-any(sapply(boxoffice, is.null) == TRUE)
+any(sapply(ls_boxoffice, is.null) == TRUE)
 # Stack data together
 boxoffice <- bind_rows(map(ls_boxoffice, pluck, 1))
 
@@ -85,26 +85,26 @@ alien <- alien |>
     pos_text = max(c(imdb_rating, metacritic_rating)) + 0.25,
     .by = "film"
   )
-library(emoGG)
-
-emoji_search("film")
-
-ggplot(alien, aes(film)) +
- geom_emoji(aes(y = imdb_rating), emoji = "1f37f") +
-  geom_emoji(aes(y = metacritic_rating), emoji = "1f3a6")
-  geom_point(aes(y = metacritic_rating), size = 3, shape = 2) +
-  geom_label(
-    aes(y = pos_text, label = str_wrap(film, 18)),
-    size = 4,
-    hjust = 0,
-    family = "Futura") +
-  scale_y_continuous(breaks = seq(3, 9, 1)) +
-  coord_flip() +
-  theme_minimal(base_family = "Futura") +
-  theme(
-    panel.grid.minor = element_blank(),
-    axis.text.y = element_blank()
-  )
+# library(emoGG)
+#
+# emoji_search("film")
+#
+# ggplot(alien, aes(film)) +
+#  geom_emoji(aes(y = imdb_rating), emoji = "1f37f") +
+#   geom_emoji(aes(y = metacritic_rating), emoji = "1f3a6")
+#   geom_point(aes(y = metacritic_rating), size = 3, shape = 2) +
+#   geom_label(
+#     aes(y = pos_text, label = str_wrap(film, 18)),
+#     size = 4,
+#     hjust = 0,
+#     family = "Futura") +
+#   scale_y_continuous(breaks = seq(3, 9, 1)) +
+#   coord_flip() +
+#   theme_minimal(base_family = "Futura") +
+#   theme(
+#     panel.grid.minor = element_blank(),
+#     axis.text.y = element_blank()
+#   )
 
 ## Join datasets -----------------------------------------------------------
 
@@ -196,15 +196,18 @@ yearly_bo <- yearly_bo |>
   left_join(cpi_adjust, by = c("year_movie_1" = "year")) |>
   mutate(adjusted = total * inflation_factor / 1e6)
 
+write_csv(yearly_bo, "data/box_office_alien_movies.csv")
+
 # Plot elements -----------------------------------------------------------
 
 
 # Plot --------------------------------------------------------------------
 
 sub |>
-  filter(year_movie_1 %in% 2000:2020) |>
+  filter(year_movie_1 %in% 1996:2005) |>
   group_by(year_movie_1) |>
-  slice_max(total_gross, n = 1)
+  slice_max(total_gross, n = 12) |>
+  print(n = 50)
 
 
 
@@ -289,10 +292,10 @@ p_col <- ggplot(yearly_bo, aes(year_movie_1, adjusted)) +
   ) +
   theme_minimal(base_family = font) +
   theme(
-    text = element_text(color = "#fefefe"),
-    axis.text = element_text(color = "#fefefe", size = 12),
+    text = element_text(color = pal_scifi[9]),
+    axis.text = element_text(color = pal_scifi[9], size = 12),
     axis.text.y = element_blank(),
-    axis.ticks.x = element_line(colour = "#fefefe", linewidth = 0.5, lineend = "round"),
+    axis.ticks.x = element_line(colour = pal_scifi[9], linewidth = 0.5, lineend = "round"),
     panel.background = element_rect(fill = space_background, color = space_background),
     plot.background = element_rect(fill = space_background, color = space_background),
     panel.grid.minor = element_blank(),
