@@ -23,7 +23,7 @@ My submissions for the 2025 Chart Challenge.
 
 | <img src="/plots/3_circles_Porto Alegre.png">  |  <img src="/plots/3_circles_São Paulo.png"> |
 |:-------------------------:|:-------------------------:|
-| <img src="/plots/3_circles_Rio de Janeiro.png">  |  <img src="/plots/3_circles_Brasília_final.png"> |
+| <img src="/plots/3_circles_Rio de Janeiro.png">  |  <img src="/plots/3_circles_Brasília.png"> |
 
 ### 4 - Big or Small
 
