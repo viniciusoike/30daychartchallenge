@@ -5,7 +5,7 @@ library(tidyr)
 import::from(here, here)
 
 # Import data ---------------------------------------------------------------
-dirpath <- here("data/day_7/bilheteria-diaria-obras-por-distribuidoras-csv")
+dirpath <- here("data/day_6/bilheteria-diaria-obras-por-distribuidoras-csv")
 
 # List all csvs and stack
 files_path <- fs::dir_ls(dirpath)
