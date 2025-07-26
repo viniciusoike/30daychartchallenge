@@ -156,6 +156,7 @@ total_trend <- subdat |>
 ## Plot elements -----------------------------------------------------------
 
 font_text <- "Gill Sans"
+offwhite <- "#fefefe"
 
 # paletteer::paletteer_d("ggthemes::Green_Orange_Teal")
 
@@ -257,7 +258,6 @@ annotated_plot <- base_plot +
     hjust = 0
   )
 
-
 final_plot <- annotated_plot &
   plot_annotation(
     title = "Diverging Roads: the global road safety crisis",
@@ -266,14 +266,16 @@ final_plot <- annotated_plot &
   ) &
   theme_minimal(base_family = font_text) +
     theme(
+      panel.background = element_rect(fill = offwhite, color = offwhite),
+      plot.background = element_rect(fill = offwhite, color = offwhite),
       panel.grid.minor = element_blank(),
       axis.text.x = element_text(size = 10),
       axis.text.y = element_blank(),
       axis.title = element_blank(),
       plot.caption = element_text(size = 8, color = "gray40", hjust = 0),
-      plot.title = element_text(size = 16),
+      plot.title = element_text(size = 18),
       plot.subtitle = element_text(size = 10, color = "gray20"),
       plot.margin = margin(5, 10, 5, 10)
     )
 
-ggsave(here("plots/24_who.png"), final_plot, width = 8, height = 6)
+ggsave(here("plots/24_who.png"), final_plot, width = 8, height = 5.5)
