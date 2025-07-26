@@ -83,6 +83,10 @@ My submissions for the 2025 Chart Challenge.
 
 ### 14 - Kinship
 
+<p align="center">
+  <img width="90%" src="/plots/14_kinship.png">
+</p>
+
 ### 15 - Complicated
 
 <p align="center">
@@ -98,6 +102,10 @@ My submissions for the 2025 Chart Challenge.
 ### 17 - Birds
 
 ### 18 El Pais (theme day)
+
+<p align="center">
+  <img width="80%" src="/plots/18_el_pais.png">
+</p>
 
 ## Time Series
 
@@ -133,9 +141,17 @@ My submissions for the 2025 Chart Challenge.
 
 ### 24 - World Health Organization (data day)
 
+<p align="center">
+  <img width="80%" src="/plots/24_who.png">
+</p>
+
 ## Uncertainties
 
 ### 25 - Risk
+
+<p align="center">
+  <img width="90%" src="/plots/25_risk.png">
+</p>
 
 ### 26 - Monochrome
 
