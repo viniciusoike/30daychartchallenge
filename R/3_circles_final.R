@@ -457,16 +457,13 @@ map_population <- function(code, l = 100, k = 9) {
 
 # test --------------------------------------------------------------------
 
-library(showtext)
 library(sf)
 library(dplyr)
 library(ggplot2)
+library(ragg)
 
 import::from(here, here)
 sf::sf_use_s2(FALSE)
-sysfonts::font_add("Futura", "Futura.ttc")
-showtext_opts(dpi = 300)
-showtext_auto()
 
 dim_muni <- geobr::read_municipality(year = 2022)
 dim_muni <- as_tibble(st_drop_geometry(dim_muni))
