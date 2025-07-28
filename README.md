@@ -77,6 +77,10 @@ My submissions for the 2025 Chart Challenge.
 
 ### 12 - Data.gov (data day)
 
+<p align="center">
+  <img width="80%" src="/plots/12_datagov.png">
+</p>
+
 ## Relationships
 
 ### 13 - Clusters
@@ -88,7 +92,7 @@ My submissions for the 2025 Chart Challenge.
 ### 14 - Kinship
 
 <p align="center">
-  <img width="90%" src="/plots/14_kinship.png">
+  <img width="80%" src="/plots/14_kinship.png">
 </p>
 
 ### 15 - Complicated
