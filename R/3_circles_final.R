@@ -24,7 +24,6 @@
 # readr::write_csv(top_pop, here("data/day_3/top_cities_population.csv"))
 # readr::write_csv(top_pop_dens, here("data/day_3/top_cities_population_density.csv"))
 
-
 get_border = function(code) {
   #> Importa o shape do município
   border <- geobr::read_municipality(code, showProgress = FALSE)
@@ -38,7 +37,6 @@ get_state = function(code) {
 }
 
 get_streets <- function(code, border) {
-
   city_name <- subset(dim_muni, code_muni == code)[["name_muni"]]
   #> Encontra o nome da Unidade Federativa
   nome_uf <- get_state(code)
@@ -51,7 +49,14 @@ get_streets <- function(code, border) {
   streets <- osmdata::add_osm_feature(
     place,
     key = "highway",
-    value = c("motorway", "trunk", "primary", "secondary", "tertiary", "residential")
+    value = c(
+      "motorway",
+      "trunk",
+      "primary",
+      "secondary",
+      "tertiary",
+      "residential"
+    )
   )
 
   #> Converte o dado
@@ -66,11 +71,9 @@ get_streets <- function(code, border) {
   streets_border <- sf::st_intersection(streets, border)
   #> Retorna o objeto streets_border
   return(streets_border)
-
 }
 
 get_osm <- function(place, ls) {
-
   qr_osm_ft <- osmdata::add_osm_features(opq = place, features = ls)
   osm_ft <- osmdata::osmdata_sf(qr_osm_ft)
 
@@ -95,11 +98,9 @@ get_osm <- function(place, ls) {
   osm_ft <- sf::st_transform(osm_ft, crs = 4674)
 
   return(osm_ft)
-
 }
 
 get_osm_aesthetics <- function(code, buffer) {
-
   city_name <- subset(dim_muni, code_muni == code)[["name_muni"]]
   #> Encontra o nome da Unidade Federativa
   nome_uf <- get_state(code)
@@ -131,10 +132,11 @@ get_osm_aesthetics <- function(code, buffer) {
 
   features <- list(water = osm_water, green = osm_green, parking = osm_parking)
 
-  features <- parallel::mclapply(features, \(x) sf::st_intersection(buffer, sf::st_make_valid(x)))
+  features <- parallel::mclapply(features, \(x) {
+    sf::st_intersection(buffer, sf::st_make_valid(x))
+  })
 
   return(features)
-
 }
 
 
@@ -148,11 +150,9 @@ add_jenks_breaks = function(shp, k = 7, variable = NULL) {
     )
 
   return(out)
-
 }
 
 get_population_grid <- function(code, l = 100) {
-
   tracts <- geobr::read_census_tract(code, year = 2022, simplified = FALSE)
 
   pop_city <- dplyr::filter(pop_setores, code_muni == code)
@@ -172,26 +172,22 @@ get_population_grid <- function(code, l = 100) {
     dplyr::mutate(
       pop = ifelse(is.na(pop), 0, pop),
       pop = sqrt(pop)
-      ) |>
+    ) |>
     sf::st_interpolate_aw(grid, extensive = TRUE, na.rm = TRUE)
 
   return(grid_pop)
-
 }
 
 get_buffer <- function(point = NULL, coords = NULL, dist = 6000) {
-
   center <- sf::st_as_sf(point, coords = c("lng", "lat"), crs = 4326)
 
   buffer_zone <- center |>
     sf::st_transform(crs = 29101) |>
     sf::st_buffer(dist = dist) |>
     sf::st_transform(crs = 4674)
-
 }
 
 get_streets_population = function(population, streets) {
-
   stopifnot(any(colnames(population) %in% "jenks_group"))
 
   #> Encontra todos os grupos
@@ -202,7 +198,6 @@ get_streets_population = function(population, streets) {
   #> Esta função filtra o grid de population e faz a sua interseção
   #> com o shape das princiapis vias
   join_streets = function(group) {
-
     poly = population %>%
       dplyr::filter(jenks_group == group) %>%
       sf::st_union(.) %>%
@@ -212,7 +207,6 @@ get_streets_population = function(population, streets) {
     joined = suppressWarnings(sf::st_intersection(streets, poly))
 
     return(joined)
-
   }
   #> Aplica a função acima em todos os grupos em paralelo
   street_levels = parallel::mclapply(groups, join_streets)
@@ -220,22 +214,28 @@ get_streets_population = function(population, streets) {
   out = dplyr::bind_rows(street_levels, .id = "level")
 
   return(out)
-
 }
 
 interpolate_buffer_streets <- function(buffer, code) {
-
   pop_city <- filter(pop_setores, code_muni == code)
-  tracts <- geobr::read_census_tract(code, year = 2022, simplified = FALSE, showProgress = FALSE)
+  tracts <- geobr::read_census_tract(
+    code,
+    year = 2022,
+    simplified = FALSE,
+    showProgress = FALSE
+  )
   pop_tract <- left_join(tracts, pop_city, by = "code_tract")
-  pop_buffer <- st_interpolate_aw(select(pop_tract, pop), buffer, extensive = TRUE, na.rm = TRUE)
+  pop_buffer <- st_interpolate_aw(
+    select(pop_tract, pop),
+    buffer,
+    extensive = TRUE,
+    na.rm = TRUE
+  )
 
   return(pop_buffer)
-
 }
 
 get_subtitle <- function(buffer, code) {
-
   pop_buffer <- interpolate_buffer_streets(buffer, code)
 
   p0 <- subset(population, code_muni == code)[["population"]]
@@ -246,13 +246,22 @@ get_subtitle <- function(buffer, code) {
   sub_pop_buffer <- format(round(p1), big.mark = ".")
   share_buffer <- round(s, 1)
 
-  subtitle <- stringr::str_glue("Total pop.: {sub_pop_city}\nPop. inside circle: {sub_pop_buffer} ({share_buffer}%)")
+  subtitle <- stringr::str_glue(
+    "Total pop.: {sub_pop_city}\nPop. inside circle: {sub_pop_buffer} ({share_buffer}%)"
+  )
 
   return(subtitle)
 }
 
-plot_map <- function(shp, features, buffer, streets, title, subtitle, font = "Futura") {
-
+plot_map <- function(
+  shp,
+  features,
+  buffer,
+  streets,
+  title,
+  subtitle,
+  font = "Futura"
+) {
   cores <- viridis::inferno(n = length(unique(shp$level)) + 1)
   cores <- head(cores, length(cores) - 1)
 
@@ -272,13 +281,19 @@ plot_map <- function(shp, features, buffer, streets, title, subtitle, font = "Fu
     ymin = coords_buffer["ymin"]
   )
 
-  df_segment$midpoint <- df_segment$xmin + (df_segment$xmax - df_segment$xmin) / 2
+  df_segment$midpoint <- df_segment$xmin +
+    (df_segment$xmax - df_segment$xmin) / 2
 
   p <- ggplot() +
     # All streets
     geom_sf(data = all_streets, color = "gray25", linewidth = 0.2) +
     # Green
-    geom_sf(data = features$green, fill = greens[6], alpha = 0.8, color = offwhite) +
+    geom_sf(
+      data = features$green,
+      fill = greens[6],
+      alpha = 0.8,
+      color = offwhite
+    ) +
     # Water
     geom_sf(data = features$water, fill = blues[7], color = offwhite) +
     # Parkings
@@ -286,27 +301,39 @@ plot_map <- function(shp, features, buffer, streets, title, subtitle, font = "Fu
     # Highway
     geom_sf(
       data = dplyr::filter(shp, highway == "motorway"),
-      aes(color = level, fill = level), linewidth = 0.5) +
+      aes(color = level, fill = level),
+      linewidth = 0.5
+    ) +
     # Trunk
     geom_sf(
       data = dplyr::filter(shp, highway == "trunk"),
-      aes(color = level, fill = level), linewidth = 0.5) +
+      aes(color = level, fill = level),
+      linewidth = 0.5
+    ) +
     # Primary roads
     geom_sf(
       data = dplyr::filter(shp, highway == "primary"),
-      aes(color = level, fill = level), linewidth = 0.35) +
+      aes(color = level, fill = level),
+      linewidth = 0.35
+    ) +
     # Secondary roads
     geom_sf(
       data = dplyr::filter(shp, highway == "secondary"),
-      aes(color = level, fill = level), linewidth = 0.3) +
+      aes(color = level, fill = level),
+      linewidth = 0.3
+    ) +
     # Tertiary roads
     geom_sf(
       data = dplyr::filter(shp, highway == "tertiary"),
-      aes(color = level, fill = level), linewidth = 0.25) +
+      aes(color = level, fill = level),
+      linewidth = 0.25
+    ) +
     # Residential roads
     geom_sf(
       data = dplyr::filter(shp, highway == "residential"),
-      aes(color = level, fill = level), linewidth = 0.25) +
+      aes(color = level, fill = level),
+      linewidth = 0.25
+    ) +
     # Circular outiline
     geom_sf(data = buffer, fill = NA, color = "gray10", lwd = 1) +
     # Double arrow at the bottom
@@ -347,22 +374,45 @@ plot_map <- function(shp, features, buffer, streets, title, subtitle, font = "Fu
     )
 
   return(p)
-
 }
 
 points_center <- tibble::tribble(
-  ~code_muni, ~lat, ~lng,
-  3550308, -23.561289, -46.655672,
-  4106902, -25.437640, -49.269854,
-  3304557, -22.905087, -43.185802,
-  5300108, -15.797507776165935, -47.875681717924245,
-  2304400, -3.7274277550472577, -38.52898363130275,
-  2927408, -12.978167982377807, -38.512008190685386,
-  3106200, -19.925922770242043, -43.9371279250982,
-  1302603, -3.1299468807596593, -60.020726028748896,
-  2611606, -8.066554950939688, -34.87966655765099,
-  5208707, -16.666485683914015, -49.25212964879797,
-  4314902, -30.03656382031383, -51.21603362841124
+  ~code_muni,
+  ~lat,
+  ~lng,
+  3550308,
+  -23.561289,
+  -46.655672,
+  4106902,
+  -25.437640,
+  -49.269854,
+  3304557,
+  -22.905087,
+  -43.185802,
+  5300108,
+  -15.797507776165935,
+  -47.875681717924245,
+  2304400,
+  -3.7274277550472577,
+  -38.52898363130275,
+  2927408,
+  -12.978167982377807,
+  -38.512008190685386,
+  3106200,
+  -19.925922770242043,
+  -43.9371279250982,
+  1302603,
+  -3.1299468807596593,
+  -60.020726028748896,
+  2611606,
+  -8.066554950939688,
+  -34.87966655765099,
+  5208707,
+  -16.666485683914015,
+  -49.25212964879797,
+  4314902,
+  -30.03656382031383,
+  -51.21603362841124
 )
 
 # map_population <- function(code, l = 100, k = 9) {
@@ -446,7 +496,7 @@ map_population <- function(code, l = 100, k = 9) {
     title = title,
     subtitle = subtitle,
     font = "Futura"
-    )
+  )
 
   message("✓ Map generated successfully")
 
@@ -480,15 +530,18 @@ population <- readr::read_csv(here("data/day_3/top_cities_population.csv"))
 
 print_plot <- function(code) {
   name_city <- subset(dim_muni, code_muni == code)$name_muni
+  name_city <- janitor::make_clean_names(name_city)
   name_file <- here(glue::glue("plots/3_circles_{name_city}.png"))
   if (file.exists(name_file)) {
     return(NULL)
   }
   plot_map <- map_population(code, l = 100)
-  readr::write_rds(plot_map, here(glue::glue("plots/map_{name_city}.rds")))
+  # readr::write_rds(plot_map, here(glue::glue("plots/map_{name_city}.rds")))
   ggsave(name_file, plot_map, width = 6, height = 5)
   return(plot_map)
 }
+
+print_plot(5300108)
 
 # cities <- c(3550308, 4314902, 4106902, 3304557, 5300108)
 
