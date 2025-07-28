@@ -39,6 +39,10 @@ My submissions for the 2025 Chart Challenge.
 
 ### 6 - Florence Nightingale
 
+<p align="center">
+  <img width="80%" src="/plots/6_florence_nightingale.png">
+</p>
+
 ## Distributions
 
 ### 7 - Outliers
