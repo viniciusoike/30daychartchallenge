@@ -6,7 +6,7 @@ library(ragg)
 import::from(stringr, str_wrap)
 import::from(here, here)
 
-dat <- readr::read_csv(here("data/day_4/ips_brasil_municipios.csv"))
+dat <- readr::read_csv(here("data/day_5/ips_brasil_municipios.csv"))
 
 dict <- tibble(
   original_names = names(dat),
@@ -59,6 +59,9 @@ ranking <- ranked |>
     is_highlight = factor(ifelse(codigo_ibge %in% codes, 1L, 0L)),
     rank_labels = if_else(rank %in% c(1, 5, 10, 15, 20, 25), paste0(rank, "°"), NA)
   )
+
+ranking |>
+  select(measure, rank, municipio, highlight, is_highlight)
 
 
 cores <- c(
