@@ -8,16 +8,34 @@ import::from(here, here)
 
 # Data --------------------------------------------------------------------
 
-
-
 flags <- tibble(
   emoji = c("🇦🇷", "🇦🇺", "🇧🇷", "🇨🇱", "🇱🇾", "🇳🇴", "🇳🇿", "🇻🇪", "🇿🇲"),
-  country = c("Argentina", "Australia", "Brazil", "Chile", "Libya", "Norawy", "New Zeland", "Venezuela", "Zambia"),
-  countrycode = c("ARG", "AUS", "BRA", "CHL", "LBY", "NOR", "NZL", "VEN", "ZMB"),
+  country = c(
+    "Argentina",
+    "Australia",
+    "Brazil",
+    "Chile",
+    "Libya",
+    "Norawy",
+    "New Zeland",
+    "Venezuela",
+    "Zambia"
+  ),
+  countrycode = c(
+    "ARG",
+    "AUS",
+    "BRA",
+    "CHL",
+    "LBY",
+    "NOR",
+    "NZL",
+    "VEN",
+    "ZMB"
+  ),
   label = paste(countrycode, emoji)
 )
 
-dat <- read_excel(here("data/day_8/mpd2023_web.xlsx"), sheet = 5 )
+dat <- read_excel(here("data/day_8/mpd2023_web.xlsx"), sheet = 5)
 
 countries <- c("ARG", "AUS", "BRA", "CHL", "LBY", "NOR", "NZL", "VEN", "ZMB")
 
@@ -26,7 +44,7 @@ subdat <- dat |>
     countrycode %in% countries,
     year >= 1949,
     !is.na(gdppc)
-    ) |>
+  ) |>
   mutate(
     chg = (gdppc / lag(gdppc) - 1) * 100,
     .by = "countrycode"
@@ -49,13 +67,16 @@ font_text = "Gill Sans"
 
 # Colors
 offwhite <- "#f5f5f5"
-palette <- c("agriculture" = "#006D2C", "energy" = "#02818A", "mining" = "#2171b5")
+palette <- c(
+  "agriculture" = "#006D2C",
+  "energy" = "#02818A",
+  "mining" = "#2171b5"
+)
 
 
 # Plot function -----------------------------------------------------------
 
 plot_histogram <- function(country, text_x = 5, text_y = 22.5) {
-
   sub <- subdat[subdat[["countrycode"]] == country, ]
 
   # Find the class and avg growth
@@ -83,7 +104,11 @@ plot_histogram <- function(country, text_x = 5, text_y = 22.5) {
     ) +
     scale_x_continuous(limits = c(-14, 14), breaks = seq(-14, 14, 2)) +
     scale_y_continuous(limits = c(NA, 30)) +
-    labs(x = "Annual GDP per capita growth (%)", y = "Frequency (N)", subtitle = unique(sub$label)) +
+    labs(
+      x = "Annual GDP per capita growth (%)",
+      y = "Frequency (N)",
+      subtitle = unique(sub$label)
+    ) +
     theme_minimal(base_family = font_text) +
     theme(
       plot.background = element_rect(color = offwhite, fill = offwhite),
@@ -94,7 +119,6 @@ plot_histogram <- function(country, text_x = 5, text_y = 22.5) {
       axis.title.x = element_text(size = 14),
       plot.subtitle = element_text(size = 14, hjust = 0.5, family = font_title)
     )
-
 }
 
 params <- tibble(
@@ -107,14 +131,13 @@ plots <- purrr::pmap(params, plot_histogram)
 names(plots) <- countries
 
 adjust_plot <- function(p, type) {
-
   if (type == 1) {
     p <- p +
       labs(x = NULL, y = NULL) +
       theme(
         axis.text.x = element_blank(),
         axis.title.x = element_blank()
-        )
+      )
   }
 
   if (type == 2) {
@@ -140,7 +163,6 @@ adjust_plot <- function(p, type) {
   }
 
   return(p)
-
 }
 
 
@@ -148,31 +170,68 @@ adjust_plot <- function(p, type) {
 
 bra <- plots$BRA +
   ggtitle("Agriculture") +
-  theme(plot.title = element_text(size = 16, family = font_title, hjust = 0.5, color = palette["agriculture"]))
+  theme(
+    plot.title = element_text(
+      size = 16,
+      family = font_title,
+      hjust = 0.5,
+      color = palette["agriculture"]
+    )
+  )
 
 lby <- plots$LBY +
   ggtitle("Energy") +
-  theme(plot.title = element_text(size = 16, family = font_title, hjust = 0.5, color = palette["energy"]))
+  theme(
+    plot.title = element_text(
+      size = 16,
+      family = font_title,
+      hjust = 0.5,
+      color = palette["energy"]
+    )
+  )
 
 aus <- plots$AUS +
   ggtitle("Mining") +
-  theme(plot.title = element_text(size = 16, family = font_title, hjust = 0.5, color = palette["mining"]))
+  theme(
+    plot.title = element_text(
+      size = 16,
+      family = font_title,
+      hjust = 0.5,
+      color = palette["mining"]
+    )
+  )
 
-p1 <- adjust_plot(bra, 1) / adjust_plot(plots$ARG, 2) / adjust_plot(plots$NZL, 4)
-p2 <- adjust_plot(lby, 1) / adjust_plot(plots$NOR, 1) / adjust_plot(plots$VEN, 3)
-p3 <- adjust_plot(aus, 1) / adjust_plot(plots$CHL, 1) / adjust_plot(plots$ZMB, 4)
+p1 <- adjust_plot(bra, 1) /
+  adjust_plot(plots$ARG, 2) /
+  adjust_plot(plots$NZL, 4)
+p2 <- adjust_plot(lby, 1) /
+  adjust_plot(plots$NOR, 1) /
+  adjust_plot(plots$VEN, 3)
+p3 <- adjust_plot(aus, 1) /
+  adjust_plot(plots$CHL, 1) /
+  adjust_plot(plots$ZMB, 4)
 
 panel <- p1 | p2 | p3
 
-panel <- panel + plot_annotation(
-  title = "Comparing growth patterns among commodity exporters",
-  subtitle = "Annual GDP per capita growth (%) from 1950 to 2022 among selected countries. Both x and y axis are fixed to facilitate cross-country comparisons.",
-  caption = "Source: Maddison Project (2024).") &
+panel <- panel +
+  plot_annotation(
+    title = "Comparing growth patterns among commodity exporters",
+    subtitle = "Annual GDP per capita growth (%) from 1950 to 2022 among selected countries. Both x and y axis are fixed to facilitate cross-country comparisons.",
+    caption = "Source: Maddison Project (2024)."
+  ) &
   theme(
     plot.title = element_text(family = font_title, size = 32),
-    plot.subtitle = element_text(family = font_text, size = 14, color = "gray20"),
-    plot.caption = element_text(family = font_text, size = 12, color = "gray40"),
+    plot.subtitle = element_text(
+      family = font_text,
+      size = 14,
+      color = "gray20"
+    ),
+    plot.caption = element_text(
+      family = font_text,
+      size = 12,
+      color = "gray40"
+    ),
     plot.background = element_rect(color = offwhite, fill = offwhite)
-    )
+  )
 
 ggsave("plots/8_histograms.png", panel, width = 15, height = 10.9)

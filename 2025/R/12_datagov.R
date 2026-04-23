@@ -110,6 +110,37 @@ pal_colors[2] <- MetBrewer::met.brewer("Hokusai1", n = 24)[15]
 font_text <- "DIN Alternate"
 font_title <- "Rockwell"
 
+theme_plot <- theme_minimal(base_size = 10, base_family = font_text) +
+  theme(
+    panel.background = element_rect(fill = offwhite, color = offwhite),
+    plot.background = element_rect(fill = offwhite, color = offwhite),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = size_axis),
+    axis.ticks.x = element_line(color = "gray20")
+  )
+
+theme_annotation <- theme(
+  panel.background = element_rect(fill = offwhite, color = offwhite),
+  plot.background = element_rect(fill = offwhite, color = offwhite),
+  plot.title = element_text(
+    size = 18,
+    color = "#000000",
+    family = font_title
+  ),
+  plot.subtitle = element_text(
+    size = 11,
+    color = "gray40",
+    family = font_text
+  ),
+  plot.caption = element_text(
+    hjust = 0,
+    color = "gray50",
+    size = 8,
+    family = font_text
+  ),
+  plot.margin = margin(10, 10, 10, 10)
+)
+
 base_plot <- ggplot(series, aes(date, adjusted_price / 1e3, color = town)) +
   geom_point(alpha = 0.15, shape = 21, aes(fill = town)) +
   geom_smooth(method = "gam", se = FALSE) +
@@ -127,7 +158,7 @@ base_plot <- ggplot(series, aes(date, adjusted_price / 1e3, color = town)) +
   scale_x_date(
     breaks = dbreaks,
     date_label = "%Y",
-    expand = expansion(c(0.025, 0.2))
+    expand = expansion(c(0.025, 0.15))
   ) +
   scale_y_continuous(
     breaks = seq(0, 700, by = 100),
@@ -137,33 +168,19 @@ base_plot <- ggplot(series, aes(date, adjusted_price / 1e3, color = town)) +
   scale_color_manual(name = "", values = pal_colors) +
   scale_fill_manual(name = "", values = pal_colors) +
   labs(x = NULL, y = "Median House Price ($ thous.)") +
-  theme_minimal(base_family = font_text) +
-  theme()
+  theme_plot
 
-
-theme_plot <- theme_minimal(base_size = 10, base_family = font_text) +
-  theme(
-    panel.background = element_rect(fill = offwhite, color = offwhite),
-    plot.background = element_rect(fill = offwhite, color = offwhite),
-    panel.grid.minor = element_blank(),
-    axis.text.x = element_text(size = size_axis),
-    axis.ticks.x = element_line(color = "gray20")
-  )
-
-theme_annotation <- theme(
-  plot.title = element_text(
-    size = 18,
-    color = "#000000",
-    family = font_title
-  ),
-  plot.subtitle = element_text(size = 11, color = "gray30"),
-  plot.caption = element_text(hjust = 0, color = "gray40")
-)
-
-base_plot +
+final_plot <- base_plot +
   plot_annotation(
     title = "House Prices in Connecticut",
     subtitle = "Median monthly house sale price in constant 2022 USD (thousands) of main cities in Conneticut.\nSample inclues only Single and Two Family Homes, and Condo units in the 25k-10M range.",
     caption = "Source: Real Estate Sales 2001-2022 GL (data.gov). Smooth line is a GAM trend.\nNote: data has missing values.",
     theme = theme_annotation
   )
+
+ggsave(
+  here::here("plots", "12_datagov.png"),
+  final_plot,
+  width = 7,
+  height = 5
+)
