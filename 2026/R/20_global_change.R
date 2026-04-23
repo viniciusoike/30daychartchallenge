@@ -25,30 +25,29 @@ urban_share <- urban_share |>
 
 urban_share <- left_join(urban_share, pop, by = join_by(code == countries))
 
-urban_share |>
-  filter(str_detect(entity, "World")) |>
-  ggplot(aes(year, value, color = urban, linetype = fcast)) +
-  geom_line()
+# urban_share |>
+#   filter(str_detect(entity, "World")) |>
+#   ggplot(aes(year, value, color = urban, linetype = fcast)) +
+#   geom_line()
 
-urban_share |>
-  filter(year == 1970, population > 1e5, urban == "urban") |>
-  slice_max(value, n = 10)
+# urban_share |>
+#   filter(year == 1970, population > 1e5, urban == "urban") |>
+#   slice_max(value, n = 10)
 
-urban_share |>
-  filter(population > 1e5, urban == "urban", fcast == "past") |>
-  mutate(roll_chg = value - lag(value, 10), .by = "code") |>
-  filter(year == 2000) |>
-  slice_max(roll_chg, n = 10)
+# urban_share |>
+#   filter(population > 1e5, urban == "urban", fcast == "past") |>
+#   mutate(roll_chg = value - lag(value, 10), .by = "code") |>
+#   filter(year == 2000) |>
+#   slice_max(roll_chg, n = 10)
 
-urban_share |>
-  filter(population > 1e6, urban == "urban", fcast == "past") |>
-  summarise(
-    total_chg = last(value, na_rm = TRUE) - first(value, na_rm = TRUE),
-    .by = "entity"
-  ) |>
-  arrange(desc(total_chg)) |>
-  head(20)
-
+# urban_share |>
+#   filter(population > 1e6, urban == "urban", fcast == "past") |>
+#   summarise(
+#     total_chg = last(value, na_rm = TRUE) - first(value, na_rm = TRUE),
+#     .by = "entity"
+#   ) |>
+#   arrange(desc(total_chg)) |>
+#   head(20)
 
 sel_countries <- c(
   "Angola",
