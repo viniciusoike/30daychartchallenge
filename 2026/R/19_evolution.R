@@ -5,7 +5,7 @@ library(ggtext)
 
 import::from(tidyr, pivot_wider)
 
-api_query <- "/t/5457/n1/all/v/216,1000216/p/all/c782/0,40092,40099,40100,40101,40102,40103,40104,40105,40106,40107,40108,40109,40110,40111,40112,40113,40114,40115,40116,40117,40118,40119,40120,40121,40122,40123,40124,40125,40126,40127,40128,40129,40130,40131,40136,40137,40138,40139,40142,40143,40144,40145,40146,40147,40148,40149,40150,40151,40152,40260,40261,40262,40263,40264,40265,40266,40267,40268,40269,40270,40271,40272,40273,40274,40329,40330,40331,40468,45982/d/v1000216%202"
+api_query <- "/t/5457/n1/all/v/allxp/p/all/c782/all"
 
 dat <- sidrar::get_sidra(api = api_query)
 
@@ -23,9 +23,10 @@ brazil <- dat |>
   ) |>
   mutate(year = as.numeric(year))
 
+readr::write_rds(brazil, "2026/data/agriculture/pam_br.rds")
+
 brazil_area <- brazil |>
   filter(name_crop == "Total", variable == "Área colhida")
-
 
 # brazil |>
 #   filter(name_crop != "Total", variable == "Área colhida") |>

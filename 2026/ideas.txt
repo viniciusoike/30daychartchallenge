@@ -1,0 +1,36 @@
+# Comparisons
+
+01. [X] Part-to-Whole - Censo Mobilidade
+02. Pictogram - dist. domicilios
+03. [X] Mosaic - GDP
+04. Slope - PAM
+05. Experimental - Censo Mobilidade
+06. Reporters Without Borders
+
+# Distributions
+
+07. Multiscale - population (district, )
+08. Circular - energy mix
+09. Wealth - GDP
+10. Pop Culture - punchcard
+11. Physical
+12. FlowingData
+
+
+# Time series
+
+19. [X] Evolution -- PAM
+20. [X] Global Change -- Urbanization rate
+21. [X] Historical -- reservas internacionais
+22. New Tool -- OJS
+23. [X] Seasons -- nascimentos heatmap
+24. South China Morning Post
+
+# Uncertainties
+
+25. Space
+26. Trend -- temperature
+27. Animation
+28. Modelling
+29. Monochrome - PAM
+30. Global Health Data Exchange
