@@ -1,7 +1,10 @@
 library(dplyr)
 library(ggplot2)
 library(ggtern)
+library(stringr)
 
+
+import::from(forcats, fct_reorder)
 import::from(tidyr, pivot_wider)
 import::from(here, here)
 import::from(sidrar, get_sidra)
@@ -176,12 +179,6 @@ final_plot <- ggtern(
     alpha = 0.7,
     shape = 21
   ) +
-  # geom_point(
-  #   data = subset(data_tern, code_muni %in% sel_cities),
-  #   aes(fill = name_region),
-  #   size = 3.5,
-  #   shape = 21
-  # ) +
   geom_text(
     data = subset(data_tern, code_muni %in% sel_cities),
     aes(label = name_muni),
@@ -228,6 +225,14 @@ library(htmlwidgets)
 
 # ---- Palette & helpers -------------------------------------------------------
 
+data_tern <- data_tern |>
+  left_join(select(dim_muni, code_muni, abbrev_state), by = "code_muni") |>
+  left_join(tab_pop, by = "code_muni") |>
+  mutate(
+    city_label = str_glue("{name_muni} ({abbrev_state})"),
+    pop_trunc = scales::number(pop / 1e3, suffix = "k"),
+  )
+
 offwhite <- "#f8fbf8"
 
 region_lvls <- levels(data_tern$name_region)
@@ -240,23 +245,19 @@ hex_to_rgba <- function(hex, alpha = 1) {
 }
 
 make_hover <- function(df) {
-  paste0(
-    "<b>",
-    df$name_muni,
-    "</b>",
-    "<br><span style='color:#999999'>",
-    df$name_region,
-    "</span>",
-    "<br>",
-    "<br>\U1F68C Transit    <b>",
-    sprintf("%.1f%%", df$public_transit),
-    "</b>",
-    "<br>\U1F6B6 Active     <b>",
-    sprintf("%.1f%%", df$active),
-    "</b>",
-    "<br>\U1F697 Car / Moto <b>",
-    sprintf("%.1f%%", df$car_or_motorcycle),
-    "</b>"
+  transit <- sprintf("%.1f%%", df$public_transit)
+  active <- sprintf("%.1f%%", df$active)
+  car <- sprintf("%.1f%%", df$car_or_motorcycle)
+
+  str_glue(
+    "<span style='color:#000000;line-height:1.15'>
+    <b>{df$city_label}</b>
+    <br>{df$name_region}
+    <br>\U1F465 Population   <b>{df$pop_trunc}</b>
+    <br>\U1F68C Transit      <b>{transit}</b>
+    <br>\U1F6B6 Active       <b>{active}</b>
+    <br>\U1F697 Car / Moto   <b>{car}</b>
+    </span>"
   )
 }
 
@@ -280,13 +281,34 @@ for (reg in region_lvls) {
     showlegend = TRUE,
     marker = list(
       color = hex_to_rgba(col, 0.50),
-      size = 10,
+      size = 9,
       line = list(color = hex_to_rgba(col, 0.80), width = 0.8)
     ),
     text = make_hover(d),
+    customdata = d$city_label,
     hoverinfo = "text"
   )
 }
+
+# Hidden highlight overlay: a single-point trace the hover JS repositions onto
+# the hovered bubble. It carries hoverinfo = "skip" so it never fires hover
+# events itself, which avoids the flicker loop caused by resizing data points.
+fig <- add_trace(
+  fig,
+  type = "scatterternary",
+  a = numeric(0),
+  b = numeric(0),
+  c = numeric(0),
+  mode = "markers",
+  name = "highlight",
+  showlegend = FALSE,
+  hoverinfo = "skip",
+  marker = list(
+    color = "rgba(0,0,0,0)",
+    size = 16,
+    line = list(color = "#1a1a1a", width = 3)
+  )
+)
 
 # ---- Layout -----------------------------------------------------------------
 
@@ -349,36 +371,131 @@ fig <- layout(
     itemsizing = "constant"
   ),
   margin = list(l = 60, r = 60, t = 80, b = 90),
+  hoverdistance = 1,
   hoverlabel = list(
     bgcolor = "white",
-    font = list(family = "Roboto Slab, sans-serif", size = 12),
+    font = list(family = "Roboto Slab, sans-serif", size = 15),
     bordercolor = "#cccccc",
     align = "left"
   )
 )
 
-# ---- Hover effect -----------------------------------------------------------
-# On hover: dim all other traces to draw attention to the hovered group.
-# On unhover: restore full opacity for all traces.
+# ---- Hover effect & city search ---------------------------------------------
+# Flicker-safe highlight. The data-point markers are never resized (resizing the
+# point under the cursor changes its hit-area and re-triggers hover -> flicker).
+# Instead we (1) dim the other regions, and (2) move a dedicated overlay trace
+# (the last trace, hoverinfo = 'skip') onto the target bubble. The same helpers
+# drive both hover and a search box: typing/picking a city 'pins' its highlight
+# so it persists, and hovering elsewhere reverts to the pinned city on mouse-out.
 
 hover_js <- "
 function(el) {
-  el.on('plotly_hover', function(eventdata) {
-    var hovered = eventdata.points[0].curveNumber;
-    var n = el.data.length;
-    var dimIdx = [], brightIdx = [];
-    for (var i = 0; i < n; i++) {
-      if (i === hovered) brightIdx.push(i); else dimIdx.push(i);
+  var overlayIdx = el.data.length - 1;
+
+  // -- shared highlight helpers ------------------------------------------------
+  function dimOthers(curve) {
+    if (el._hlCurve === curve) return;   // already dimmed for this region
+    el._hlCurve = curve;
+    var dimIdx = [];
+    for (var i = 0; i < overlayIdx; i++) { if (i !== curve) dimIdx.push(i); }
+    if (dimIdx.length) Plotly.restyle(el, {'marker.opacity': 0.1}, dimIdx);
+    Plotly.restyle(el, {'marker.opacity': 1.0}, [curve]);
+  }
+
+  function restoreAll() {
+    el._hlCurve = null;
+    var all = [];
+    for (var i = 0; i < overlayIdx; i++) all.push(i);
+    Plotly.restyle(el, {'marker.opacity': 1.0}, all);
+  }
+
+  function moveOverlay(curve, pt) {
+    var t = el.data[curve];
+    var col = (t.marker.color || '').replace(/[\\d.]+\\)$/, '1)');
+    Plotly.restyle(el, {
+      a: [[t.a[pt]]], b: [[t.b[pt]]], c: [[t.c[pt]]],
+      'marker.color': col
+    }, [overlayIdx]);
+  }
+
+  function clearOverlay() {
+    Plotly.restyle(el, {a: [[]], b: [[]], c: [[]]}, [overlayIdx]);
+  }
+
+  function highlight(curve, pt) {
+    el._hlKey = curve + ':' + pt;
+    dimOthers(curve);
+    moveOverlay(curve, pt);
+  }
+
+  // Revert to the pinned city, or to the bright baseline if nothing is pinned.
+  function revert() {
+    if (el._pinned) {
+      highlight(el._pinned.curve, el._pinned.pt);
+    } else {
+      el._hlKey = null;
+      restoreAll();
+      clearOverlay();
     }
-    if (dimIdx.length)   Plotly.restyle(el, {'marker.opacity': 0.08}, dimIdx);
-    if (brightIdx.length) Plotly.restyle(el, {'marker.opacity': 1.0},  brightIdx);
+  }
+
+  // -- hover -------------------------------------------------------------------
+  el.on('plotly_hover', function(eventdata) {
+    clearTimeout(el._hlTimer);
+    var p = eventdata.points[0];
+    var key = p.curveNumber + ':' + p.pointNumber;
+    if (el._hlKey === key) return;       // same point: nothing to do
+    highlight(p.curveNumber, p.pointNumber);
   });
 
   el.on('plotly_unhover', function() {
-    var n = el.data.length;
-    var all = Array.from({length: n}, function(_, i) { return i; });
-    Plotly.restyle(el, {'marker.opacity': 1.0}, all);
+    clearTimeout(el._hlTimer);
+    el._hlTimer = setTimeout(revert, 60);
   });
+
+  // -- search box --------------------------------------------------------------
+  if (!el._searchBuilt) {
+    el._searchBuilt = true;
+    var listId = el.id + '-cities';
+
+    // Unique city labels (customdata) across the region traces.
+    var seen = {}, opts = '';
+    for (var t = 0; t < overlayIdx; t++) {
+      var cd = el.data[t].customdata || [];
+      for (var k = 0; k < cd.length; k++) {
+        if (!seen[cd[k]]) { seen[cd[k]] = true; }
+      }
+    }
+    Object.keys(seen).sort().forEach(function(name) {
+      opts += '<option value=\"' + name + '\"></option>';
+    });
+
+    var box = document.createElement('div');
+    box.style.cssText = 'text-align:center;margin:6px 0 2px;font-family:\"Roboto Slab\",sans-serif;';
+    box.innerHTML =
+      '<input list=\"' + listId + '\" placeholder=\"Search a city…\" ' +
+      'style=\"width:260px;padding:6px 10px;border:1px solid #cccccc;' +
+      'border-radius:6px;background:#f8fbf8;font-family:inherit;font-size:13px;' +
+      'color:#000000;\" />' +
+      '<datalist id=\"' + listId + '\">' + opts + '</datalist>';
+    el.parentNode.insertBefore(box, el);
+
+    var input = box.querySelector('input');
+    input.addEventListener('input', function() {
+      var val = input.value.trim().toLowerCase();
+      if (!val) { el._pinned = null; revert(); return; }
+      for (var t = 0; t < overlayIdx; t++) {
+        var cd = el.data[t].customdata || [];
+        for (var j = 0; j < cd.length; j++) {
+          if (String(cd[j]).toLowerCase() === val) {
+            el._pinned = {curve: t, pt: j};
+            highlight(t, j);
+            return;
+          }
+        }
+      }
+    });
+  }
 }
 "
 
@@ -390,4 +507,11 @@ save_image(
   width = 1200,
   height = 800,
   scale = 2
+)
+
+# Interactive version (hover highlight + city search live only in the HTML).
+htmlwidgets::saveWidget(
+  fig,
+  "2026/plots/05_experimental.html",
+  selfcontained = TRUE
 )
