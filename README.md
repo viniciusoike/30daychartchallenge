@@ -18,6 +18,12 @@ My submissions for the 30 Day Chart Challenge.
   <img width="80%" src="2026/plots/03_mosaic.png">
 </p>
 
+### 4 - Slope
+
+<p align="center">
+  <img width="80%" src="2026/plots/04_slope.png">
+</p>
+
 ### 19 - Evolution
 
 <p align="center">
@@ -34,6 +40,12 @@ My submissions for the 30 Day Chart Challenge.
 
 <p align="center">
   <img width="80%" src="2026/plots/21_historical.png">
+</p>
+
+### 22 - New Tool
+
+<p align="center">
+  <img width="80%" src="2026/plots/22_new_tool.png">
 </p>
 
 ### 23 - Seasons
