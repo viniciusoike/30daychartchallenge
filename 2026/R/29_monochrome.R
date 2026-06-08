@@ -2,7 +2,10 @@ library(ggplot2)
 library(dplyr)
 library(patchwork)
 library(ggtext)
+library(forecast)
 import::from(scales, number, percent)
+options(scales.big.mark = ".")
+options(scales.decimal.mark = ",")
 
 pam <- readr::read_rds("2026/data/agriculture/pam_br.rds")
 
@@ -39,23 +42,36 @@ total_area <- pam |>
     variable == "Área colhida"
   )
 
-p1 <- ggplot(total_area, aes(year, value)) +
-  geom_col(width = 0.6, fill = gray_scale[1]) +
+series <- ts(log(total_area$value), start = c(1974), frequency = 1)
+model <- tslm(series ~ trend)
+fcast <- forecast(model, h = 2)
+fcast <- forecast(auto.arima(series), h = 2)
+forecast(model, h = 2, include = 6)
+
+total_area <- total_area |>
+  bind_rows(tibble(year = 1981:1982, value = exp(as.numeric(fcast$mean)))) |>
+  mutate(is_fcast = factor(if_else(year > 1980, 1L, 0L)))
+
+
+p1 <- ggplot(total_area, aes(year, value, fill = is_fcast)) +
+  geom_col(width = 0.6) +
   geom_text(
-    aes(label = number(value, scale = 1e-6, accuracy = 0.1)),
+    aes(label = number(value, scale = 1e-6, accuracy = 0.1), color = is_fcast),
     family = font_text,
     size = 4,
-    color = "#ffffff",
     nudge_y = -3e6
   ) +
-  scale_x_continuous(breaks = 1974:1980) +
+  scale_x_continuous(breaks = 1974:1982) +
   scale_y_continuous(
     expand = expansion(mult = c(0, 0.05)),
     labels = scales::label_number(scale = 1e-6)
   ) +
+  scale_color_manual(values = c("#ffffff", "#000000")) +
+  scale_fill_manual(values = gray_scale[c(1, 4)]) +
+  guides(fill = "none", color = "none") +
   labs(
     title = "AUMENTO DA ÁREA COLHIDA",
-    subtitle = "ÁREA COLHIDA DE LAVOURAS, MILHÕES DE HECTARES, (1974-1980)",
+    subtitle = "ÁREA COLHIDA DE LAVOURAS, MILHÕES DE HECTARES, (1974-1980)\nVALORES PREVISTOS PARA 1981-1982",
     x = NULL,
     y = NULL,
     caption = "FONTE: IBGE (PESQUISA AGRÍCOLA MUNICIPAL)"
@@ -200,4 +216,4 @@ panel <- p1 + p2 + p3 + plot_layout(ncol = 1)
 panel <- panel +
   plot_annotation(title = "BOLETIM AGRÍCOLA BRASILEIRO", theme = theme_plot)
 
-ggsave("2026/plots/29_monochrome.png", panel, width = 8, height = 11)
+ggsave("2026/plots/29_monochrome.png", panel, width = 8, height = 12)
