@@ -32,5 +32,5 @@
 26. Trend -- temperature
 27. Animation
 28. Modelling
-29. Monochrome - PAM
+29. [X] Monochrome - PAM
 30. Global Health Data Exchange

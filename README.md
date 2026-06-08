@@ -54,6 +54,12 @@ My submissions for the 30 Day Chart Challenge.
   <img width="80%" src="2026/plots/23_seasons.png">
 </p>
 
+### 29 - Monochrome
+
+<p align="center">
+  <img width="80%" src="2026/plots/29_monochrome.png">
+</p>
+
 ---
 
 ## 2025
