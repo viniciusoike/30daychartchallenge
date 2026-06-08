@@ -24,6 +24,18 @@ My submissions for the 30 Day Chart Challenge.
   <img width="80%" src="2026/plots/04_slope.png">
 </p>
 
+### 7 - Multiscale
+
+<p align="center">
+  <img width="80%" src="2026/plots/07_multiscale.png">
+</p>
+
+### 12 - FlowingData
+
+<p align="center">
+  <img width="80%" src="2026/plots/12_flowingdata.png">
+</p>
+
 ### 19 - Evolution
 
 <p align="center">

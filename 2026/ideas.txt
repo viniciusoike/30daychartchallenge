@@ -9,12 +9,12 @@
 
 # Distributions
 
-07. Multiscale - GDP
-08. Circular - energy mix
+07. Multiscale - Censo Mobilidade
+08. Circular - Income maps
 09. [X] Wealth - GDP
 10. Pop Culture - punchcard
 11. Physical
-12. FlowingData
+12. [X] FlowingData - Tábua de mortalidade (years left)
 
 
 # Time series
@@ -28,8 +28,8 @@
 
 # Uncertainties
 
-25. Space
-26. Trend -- temperature
+25. Space - sunspots
+26. Trend - Metro SPO
 27. Animation
 28. Modelling
 29. [X] Monochrome - PAM
