@@ -18,7 +18,11 @@ import::from(here, here)
 read_lt <- function(file, sex) {
   raw <- read_excel(file, sheet = 1, col_names = FALSE, skip = 5)
   age_raw <- raw[[1]]
-  age <- ifelse(grepl("ou mais", age_raw), 90L, suppressWarnings(as.integer(age_raw)))
+  age <- ifelse(
+    grepl("ou mais", age_raw),
+    90L,
+    suppressWarnings(as.integer(age_raw))
+  )
   tibble(
     age = age,
     lx = suppressWarnings(as.numeric(raw[[4]])),
@@ -134,14 +138,18 @@ theme_plot <- theme_minimal(base_family = base_text) +
   ) +
   theme_sub_axis_x(
     line = element_line(color = "gray20", linewidth = 0.3),
-    title = element_text(size = 9, color = "gray30")
+    title = element_text(size = 9, color = "gray30"),
+    text = element_text(size = 7.5, color = "gray30")
+  ) +
+  theme_sub_axis_y(
+    text = element_blank(),
+    title = element_blank()
+  ) +
+  theme_sub_strip(
+    text = element_text(size = 10, family = base_text, color = "#ffffff"),
+    background = element_rect(fill = "#0D1B2A", color = "#ffffff")
   ) +
   theme(
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank(),
-    axis.text.x = element_text(size = 7.5, color = "gray30"),
-    strip.text.x = element_text(family = title_text, size = 12),
-    strip.text.y = element_text(family = base_text, size = 10),
     legend.position = "none",
     panel.spacing.x = unit(14, "pt"),
     panel.spacing.y = unit(10, "pt")
@@ -151,6 +159,7 @@ theme_plot <- theme_minimal(base_family = base_text) +
 
 panel <- ggplot(dots, aes(x = rem, fill = sex, color = sex)) +
   geom_dots(binwidth = 1.5, color = NA, overflow = "compress") +
+  geom_hline(yintercept = 0, color = "gray10", linewidth = 0.3) +
   geom_vline(
     data = meds,
     aes(xintercept = med, color = sex),
