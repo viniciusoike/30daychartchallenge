@@ -66,10 +66,22 @@ My submissions for the 30 Day Chart Challenge.
   <img width="80%" src="2026/plots/23_seasons.png">
 </p>
 
+### 24 - South China Morning Post
+
+<p align="center">
+  <img width="80%" src="2026/plots/24_scmp.png">
+</p>
+
 ### 25 - Space
 
 <p align="center">
   <img width="80%" src="2026/plots/25_space.png">
+</p>
+
+### 26 - Trend
+
+<p align="center">
+  <img width="80%" src="2026/plots/26_trend.png">
 </p>
 
 ### 29 - Monochrome

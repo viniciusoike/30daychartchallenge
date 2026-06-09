@@ -32,13 +32,13 @@
 21. [X] Historical -- reservas internacionais
 22. [X] New Tool -- echarts
 23. [X] Seasons -- nascimentos heatmap
-24. South China Morning Post
+24. [X] South China Morning Post
 
 # Uncertainties
 
 25. [X] Space - sunspots
 26. [X] Trend - Metro SPO
 27. Animation
-28. Modelling
+28. [X] Modelling - Gompertz law / life table
 29. [X] Monochrome - PAM
 30. Global Health Data Exchange
