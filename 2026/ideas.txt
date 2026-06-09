@@ -9,13 +9,21 @@
 
 # Distributions
 
-07. Multiscale - Censo Mobilidade
+07. [X] Multiscale - Censo Mobilidade
 08. Circular - Income maps
 09. [X] Wealth - GDP
 10. Pop Culture - punchcard
 11. Physical
 12. [X] FlowingData - Tábua de mortalidade (years left)
 
+# Relationships
+
+13. Ecosystems
+14. Trade
+15. Correlation
+16. Causation
+17. Remake
+18. UniCEF
 
 # Time series
 
@@ -28,8 +36,8 @@
 
 # Uncertainties
 
-25. Space - sunspots
-26. Trend - Metro SPO
+25. [X] Space - sunspots
+26. [X] Trend - Metro SPO
 27. Animation
 28. Modelling
 29. [X] Monochrome - PAM
