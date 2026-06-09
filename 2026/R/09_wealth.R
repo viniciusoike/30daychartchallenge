@@ -168,13 +168,17 @@ theme_plot <- theme_minimal(base_family = font_text) +
   ) +
   theme_sub_panel(
     grid.minor = element_blank(),
-    grid.major.x = element_blank(),
+    grid.major = element_blank(),
     background = element_rect(fill = offwhite, color = offwhite)
   ) +
   theme_sub_axis_x(
     ticks = element_line(color = "gray20"),
     line = element_line(color = "gray20", linewidth = 0.5),
     text = element_text(color = "gray20")
+  ) +
+  theme_sub_axis_y(
+    text = element_blank(),
+    title = element_blank()
   )
 
 final_plot <- ggplot(
@@ -209,7 +213,7 @@ final_plot <- ggplot(
   scale_x_date(
     breaks = seq(as.Date("1950-01-01"), as.Date("2020-01-01"), by = "10 years"),
     date_labels = "%Y",
-    expand = expansion(c(0, 0.1))
+    expand = expansion(c(0.025, 0.025))
   ) +
   scale_y_continuous(
     breaks = seq(0, 1, 0.2),
