@@ -24,6 +24,12 @@ My submissions for the 30 Day Chart Challenge.
   <img width="80%" src="2026/plots/04_slope.png">
 </p>
 
+### 5 - Experimental
+
+<p align="center">
+  <img width="80%" src="2026/plots/05_experimental.png">
+</p>
+
 ### 7 - Multiscale
 
 <p align="center">
