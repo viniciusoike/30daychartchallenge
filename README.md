@@ -30,10 +30,22 @@ My submissions for the 30 Day Chart Challenge.
   <img width="80%" src="2026/plots/05_experimental.png">
 </p>
 
+### 6 - Reporters Without Borders
+
+<p align="center">
+  <img width="80%" src="2026/plots/06_reporters.png">
+</p>
+
 ### 7 - Multiscale
 
 <p align="center">
   <img width="80%" src="2026/plots/07_multiscale.png">
+</p>
+
+### 8 - Circular
+
+<p align="center">
+  <img width="80%" src="2026/plots/08_circular.png">
 </p>
 
 ### 9 - Wealth
@@ -46,6 +58,24 @@ My submissions for the 30 Day Chart Challenge.
 
 <p align="center">
   <img width="80%" src="2026/plots/12_flowingdata.png">
+</p>
+
+### 13 - Ecosystems
+
+<p align="center">
+  <img width="80%" src="2026/plots/13_ecossystems.png">
+</p>
+
+### 14 - Trade
+
+<p align="center">
+  <img width="80%" src="2026/plots/14_trade.png">
+</p>
+
+### 17 - Remake
+
+<p align="center">
+  <img width="80%" src="2026/plots/17_remake.png">
 </p>
 
 ### 19 - Evolution
@@ -94,6 +124,18 @@ My submissions for the 30 Day Chart Challenge.
 
 <p align="center">
   <img width="80%" src="2026/plots/26_trend.png">
+</p>
+
+### 27 - Animation
+
+<p align="center">
+  <img width="80%" src="2026/plots/27_animation.gif">
+</p>
+
+### 28 - Modelling
+
+<p align="center">
+  <img width="80%" src="2026/plots/28_modelling.png">
 </p>
 
 ### 29 - Monochrome

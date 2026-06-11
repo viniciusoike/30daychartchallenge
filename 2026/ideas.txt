@@ -5,25 +5,25 @@
 03. [X] Mosaic - GDP
 04. [X] Slope - PAM
 05. [X] Experimental - Censo Mobilidade
-06. Reporters Without Borders
+06. [X] Reporters Without Borders - RSF World Press Freedom Index (LatAm dumbbell)
 
 # Distributions
 
 07. [X] Multiscale - Censo Mobilidade
-08. Circular - Income maps
+08. [X] Circular - Income maps
 09. [X] Wealth - GDP
 10. Pop Culture - punchcard
-11. Physical
+11. Physical - ?
 12. [X] FlowingData - Tábua de mortalidade (years left)
 
 # Relationships
 
-13. Ecosystems
-14. Trade
-15. Correlation
-16. Causation
-17. Remake
-18. UniCEF
+13. [X] Ecosystems - Censo Mobilidade
+14. [X] Trade - Comex Stat (bilateral bubbles)
+15. Correlation - house prices
+16. Causation - lagged interest rates and house prices
+17. [X] Remake - Playfair trade balance (World Bank)
+18. UniCEF - urban + literacy?
 
 # Time series
 
@@ -38,7 +38,7 @@
 
 25. [X] Space - sunspots
 26. [X] Trend - Metro SPO
-27. Animation
+27. [X] Animation - fable competing models (vehicle production, COVID stress-test)
 28. [X] Modelling - Gompertz law / life table
 29. [X] Monochrome - PAM
 30. Global Health Data Exchange
