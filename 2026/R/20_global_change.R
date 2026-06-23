@@ -176,3 +176,77 @@ ggsave(
   height = 6,
   dpi = 400
 )
+
+
+plot_final_pt <- ggplot(urban_series, aes(year, value)) +
+  geom_line(lwd = 0.6, color = main_color) +
+  geom_hline(yintercept = 0) +
+  geom_point(
+    data = urban_endpoints,
+    color = main_color
+  ) +
+  geom_label(
+    data = urban_endpoints,
+    aes(y = label_pos, label = label_num),
+    family = "Roboto Slab",
+    size = 2,
+    color = "#000000"
+  ) +
+  facet_wrap(vars(entity), ncol = 3, labeller = flag_labeller) +
+  scale_x_continuous(
+    breaks = c(seq(1950, 2020, 10), 2025),
+    labels = c("1950", "60", "70", "80", "90", "2000", "10", "20", "25"),
+    expand = expansion(0.06)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 100, 20),
+    limits = c(0, 100),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  labs(
+    title = "O Enorme Salto da Urbanização",
+    subtitle = "Percentual da população vivendo em áreas urbanas, baseado na definição de cada país (estimativas históricas).",
+    caption = str_wrap(
+      "Fonte: ODIHR (Nações Unidas, Divisão de População (2025) – com processamento por Our World in Data (OWID) • @viniciusoike",
+      width = 91
+    ),
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal(base_family = "Roboto Slab") +
+  theme_sub_plot(
+    title = element_text(size = 16, family = "Georgia"),
+    subtitle = element_text(size = 10, color = "gray40"),
+    caption = element_text(size = 8, color = "gray60", hjust = 0),
+    margin = margin(15, 10, 10, 10),
+    background = element_rect(fill = offwhite, color = offwhite)
+  ) +
+  theme_sub_panel(
+    grid.minor = element_blank(),
+    grid.major.x = element_blank(),
+    grid.major.y = element_line(linewidth = 0.3),
+    background = element_rect(fill = offwhite, color = offwhite)
+  ) +
+  theme_sub_strip(
+    background = element_rect(fill = main_color, color = main_color),
+    text = element_text(size = 8, color = "#ffffff")
+  ) +
+  theme_sub_axis(
+    text = element_text(size = 6, color = "gray20")
+  ) +
+  theme_sub_axis_x(
+    ticks = element_line(color = "gray20"),
+    line = element_line(color = "gray20", linewidth = 0.5),
+    text = element_text(color = "gray20", size = c(7, 6, 6, 6, 6, 7, 6, 6, 7))
+  ) +
+  theme_sub_axis_y(
+    title = element_blank()
+  )
+
+ggsave(
+  here::here("2026", "plots", "20_global_change_pt.png"),
+  plot_final_pt,
+  width = 8,
+  height = 6,
+  dpi = 400
+)
