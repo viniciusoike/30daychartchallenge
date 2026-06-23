@@ -1,9 +1,10 @@
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(ragg)
 library(stringr)
 library(ggtext)
+library(fs)
+library(countrycode)
 library(scales)
 
 import::from(here, here)
@@ -11,55 +12,104 @@ import::from(forcats, fct_reorder)
 
 # Data --------------------------------------------------------------------
 
+years <- 2022:2026
+
+urls <- str_glue(
+  "https://rsf.org/sites/default/files/import_classement/{years}.csv"
+)
+
+import_csv <- function(x, ...) {
+  readr::read_delim(
+    file = x,
+    delim = ";",
+    locale = readr::locale(decimal_mark = ","),
+    name_repair = janitor::make_clean_names,
+    ...
+  )
+}
+
+safe_import_csv <- purrr::safely(import_csv)
+
+files <- purrr::map(urls, safe_import_csv)
+
 # RSF World Press Freedom Index, global score (0-100, higher = freer).
 # Comparison limited to 2022-2026: RSF revised its methodology in 2022, so
 # pre-2022 "abuse scores" are not comparable to the current 0-100 scale.
-# Source: Reporters Without Borders (rsf.org/en/index). Verify against RSF
-# before publishing.
-rsf <- tibble::tribble(
-  ~country, ~iso3, ~score_2022, ~rank_2022, ~score_2026, ~rank_2026,
-  "Costa Rica",         "CRI", 85.92,   8, 72.35,  38,
-  "Uruguay",            "URY", 72.03,  44, 68.72,  48,
-  "Dominican Republic", "DOM", 76.90,  30, 69.73,  44,
-  "Brazil",             "BRA", 55.36, 110, 66.37,  52,
-  "Panama",             "PAN", 62.78,  74, 62.14,  65,
-  "Chile",              "CHL", 60.61,  82, 60.84,  70,
-  "Paraguay",           "PRY", 58.36,  96, 54.67,  88,
-  "Bolivia",            "BOL", 47.58, 126, 54.25,  91,
-  "Argentina",          "ARG", 77.28,  29, 52.44,  98,
-  "Colombia",           "COL", 42.43, 145, 51.66, 102,
-  "Mexico",             "MEX", 47.57, 127, 45.23, 122,
-  "Ecuador",            "ECU", 64.61,  68, 44.37, 125,
-  "Guatemala",          "GTM", 47.94, 124, 43.21, 128,
-  "Honduras",           "HND", 34.61, 165, 41.02, 132,
-  "El Salvador",        "SLV", 54.09, 112, 38.88, 143,
-  "Peru",               "PER", 61.75,  77, 37.86, 144,
-  "Venezuela",          "VEN", 37.78, 159, 30.48, 159,
-  "Cuba",               "CUB", 27.32, 173, 29.22, 160,
-  "Nicaragua",          "NIC", 37.09, 160, 24.98, 168
+# Source: Reporters Without Borders (rsf.org/en/index).
+
+# very strange csv
+url22 <- "https://rsf.org/sites/default/files/import_classement/2022.csv"
+url26 <- "https://rsf.org/sites/default/files/import_classement/2026.csv"
+
+data_dir <- here("2026", "data", "press_freedom")
+
+if (!dir_exists(data_dir)) {
+  dir_create(data_dir)
+}
+# csv corrupts when downloading
+# download.file(url22, destfile = path(data_dir, "2022.csv"))
+download.file(url26, destfile = path(data_dir, "2026.csv"), mode = "wb")
+
+dat22 <- readr::read_delim(
+  url22,
+  delim = ";",
+  locale = readr::locale(decimal_mark = ",", grouping_mark = "."),
+  name_repair = janitor::make_clean_names
 )
 
+dat26 <- readr::read_delim(
+  path(data_dir, "2026.csv"),
+  delim = ";",
+  locale = readr::locale(decimal_mark = ",", encoding = "Windows-1252"),
+  name_repair = janitor::make_clean_names
+)
+
+dat <- bind_rows(
+  list(
+    "2026" = select(dat26, iso, score = score_2026, rank),
+    "2022" = select(dat22, iso, score, rank)
+  ),
+  .id = "year"
+)
+
+
+dat <- dat |>
+  mutate(
+    country = countrycode(iso, "iso3c", "country.name"),
+    region = countrycode(iso, "iso3c", "region")
+  )
+
 # Keep a copy of the raw data alongside the other (gitignored) inputs.
-data_dir <- here("2026", "data", "press_freedom")
-if (!dir.exists(data_dir)) dir.create(data_dir, recursive = TRUE)
-readr::write_csv(rsf, file.path(data_dir, "rsf_scores.csv"))
+readr::write_csv(dat, path(data_dir, "rsf_scores.csv"))
 
 # Reshape -----------------------------------------------------------------
 
-plot_data <- rsf |>
+rsf <- readr::read_csv(path(data_dir, "rsf_scores.csv"))
+
+rsf <- rsf |>
+  filter(region == "Latin America & Caribbean") |>
+  pivot_wider(
+    id_cols = c("iso", "region", "country"),
+    names_from = "year",
+    values_from = c("score", "rank")
+  ) |>
   mutate(
-    delta = score_2026 - score_2022,
-    direction = if_else(delta >= 0, "More free", "Less free"),
-    is_brazil = country == "Brazil",
+    delta_score = score_2026 - score_2022,
+    delta_rank = rank_2026 - rank_2022,
+    direction_score = if_else(delta_score >= 0, "More free", "Less free"),
+    direction_rank = if_else(delta_rank >= 0, "More free", "Less free"),
+    is_brazil = factor(if_else(iso == "BRA", 1, 0)),
     country = fct_reorder(country, score_2026)
   )
 
+gr <- ekioplot::ekio_pal("green")[8]
+
 # Bold Brazil's axis label via markdown.
-plot_data <- plot_data |>
+plot_data <- rsf |>
   mutate(
     label_y = if_else(
-      is_brazil,
-      str_glue("<b style='color:#1B5E20'>{country}</b>"),
+      is_brazil == 1,
+      str_glue("<b style='color:{gr}'>{country}</b>"),
       as.character(country)
     ),
     label_y = fct_reorder(label_y, score_2026)
@@ -75,18 +125,27 @@ df_ends <- plot_data |>
 
 # Plot --------------------------------------------------------------------
 
-offwhite <- "#fefefe"
-col_up <- "#2C7A7B"   # gained press freedom
-col_dn <- "#C2410C"   # lost press freedom
-col_22 <- "gray55"    # 2022 endpoint
+offwhite <- "#f8fbf8"
+
+ekioplot::ekio_pal("blue_red")
+
+col_up <- "#1E3A5F" # gained press freedom
+col_dn <- "#C53030" # lost press freedom
+col_22 <- "gray55" # 2022 endpoint
 
 font_text <- "Roboto Slab"
 
 theme_plot <- theme_minimal(base_family = font_text) +
   theme_sub_plot(
     title = element_text(size = 16, family = "Georgia"),
-    subtitle = element_textbox_simple(size = 10, color = "gray40", margin = margin(b = 12)),
+    title.position = "plot",
+    subtitle = element_textbox_simple(
+      size = 10,
+      color = "gray40",
+      margin = margin(b = 12)
+    ),
     caption = element_text(size = 8, color = "gray60"),
+    caption.position = "plot",
     margin = margin(15, 14, 10, 10),
     background = element_rect(fill = offwhite, color = offwhite)
   ) +
@@ -101,16 +160,77 @@ theme_plot <- theme_minimal(base_family = font_text) +
     text = element_text(color = "gray20")
   )
 
-dumbbell <- ggplot(plot_data, aes(y = label_y)) +
+dat <- plot_data |>
+  select(country, label_y, score_2022, score_2026) |>
+  pivot_longer(
+    cols = c(score_2022, score_2026),
+    names_sep = "_",
+    names_to = c("variable", "year")
+  ) |>
+  mutate(year = factor(year))
+
+ggplot(dat, aes(value, label_y)) +
+  geom_line(color = "gray55", lwd = 1.2) +
+  geom_point(aes(fill = year), shape = 21, size = 2) +
+  scale_x_continuous(
+    limits = c(20, 92),
+    breaks = seq(20, 90, 10),
+    expand = expansion(mult = c(0.02, 0.04))
+  ) +
+  scale_fill_manual(name = NULL, values = c("#ffffff", col_up)) +
+  labs(
+    title = "Press freedom is sliding across Latin America",
+    caption = "Source: Reporters Without Borders — World Press Freedom Index (2022, 2026). Comparison limited to RSF's post-2022 methodology. • @viniciusoike",
+    x = NULL,
+    y = NULL,
+    color = NULL
+  ) +
+  theme_plot +
+  theme(
+    panel.grid.major.y = element_line(linewidth = 0.2, linetype = 2),
+    legend.position = "top",
+    legend.justification = "left",
+    legend.margin = margin(0, 0, 0, 0),
+    axis.text.y = element_markdown(color = "gray20"),
+    axis.text.y.left = element_markdown(color = "gray20")
+  )
+
+
+ggplot(plot_data) +
   geom_segment(
-    aes(x = score_2022, xend = score_2026, yend = label_y, color = direction),
-    linewidth = 1,
-    arrow = arrow(length = unit(0.07, "inches"), type = "closed")
+    aes(
+      x = score_2022,
+      xend = score_2026,
+      y = label_y,
+      yend = label_y,
+      color = direction_score
+    )
+  ) +
+  geom_point(aes(x = score_2026, y = label_y)) +
+  scale_color_manual(
+    values = c("More free" = col_up, "Less free" = col_dn)
+  )
+
+
+ggplot(plot_data, aes(y = label_y)) +
+  geom_segment(
+    aes(
+      x = score_2022,
+      xend = score_2026,
+      yend = label_y,
+      color = direction_score
+    ),
+    linewidth = 1
   ) +
   geom_point(aes(x = score_2022), color = col_22, size = 2.2) +
   geom_text(
     data = df_ends,
-    aes(x = score_2026 + label_off, label = label_score, hjust = label_h, color = direction),
+    aes(
+      x = score_2026 + label_off,
+      label = label_score,
+      hjust = label_h,
+      color = direction_score
+    ),
     family = font_text,
     size = 2.6,
     show.legend = FALSE
