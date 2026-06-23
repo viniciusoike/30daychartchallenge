@@ -54,6 +54,12 @@ My submissions for the 30 Day Chart Challenge.
   <img width="80%" src="2026/plots/09_wealth.png">
 </p>
 
+### 11 - Physical
+
+<p align="center">
+  <img width="80%" src="2026/plots/11_physical.png">
+</p>
+
 ### 12 - FlowingData
 
 <p align="center">

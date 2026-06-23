@@ -13,7 +13,7 @@
 08. [X] Circular - Income maps
 09. [X] Wealth - GDP
 10. Pop Culture - punchcard
-11. Physical - ?
+11. [X] Physical - population by elevation
 12. [X] FlowingData - Tábua de mortalidade (years left)
 
 # Relationships

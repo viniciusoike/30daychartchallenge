@@ -230,7 +230,7 @@ data_tern <- data_tern |>
   left_join(tab_pop, by = "code_muni") |>
   mutate(
     city_label = str_glue("{name_muni} ({abbrev_state})"),
-    pop_trunc = scales::number(pop / 1e3, suffix = "k"),
+    pop_trunc = scales::number(pop, accuracy = 1e3, big.mark = ","),
   )
 
 offwhite <- "#f8fbf8"
@@ -501,12 +501,18 @@ function(el) {
 
 fig <- onRender(fig, hover_js)
 
-save_image(
-  fig,
-  "2026/plots/05_experimental.png",
-  width = 1200,
-  height = 800,
-  scale = 2
+# Static plotly export goes to its own file so it never overwrites the
+# ggtern static plot saved above (2026/plots/05_experimental.png). Wrapped
+# in try() because save_image() needs kaleido/reticulate + a Python env; a
+# missing one must not halt the script before the HTML below is written.
+try(
+  save_image(
+    fig,
+    "2026/plots/05_experimental_plotly.png",
+    width = 1200,
+    height = 800,
+    scale = 2
+  )
 )
 
 # Interactive version (hover highlight + city search live only in the HTML).
