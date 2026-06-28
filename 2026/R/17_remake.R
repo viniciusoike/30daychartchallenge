@@ -99,25 +99,23 @@ theme_plate <- theme_minimal(base_family = "EB Garamond", base_size = 13) +
     title = element_text(
       family = "Playfair Display",
       size = 22,
-      color = ink,
       hjust = 0.5
     ),
     subtitle = element_textbox_simple(
       family = "EB Garamond",
-      size = 11,
+      size = 12,
       color = ink,
       hjust = 0.5,
       halign = 0.5,
-      lineheight = 1.2,
-      margin = margin(t = 4, b = 14)
+      margin = margin(t = 5, b = 5)
     ),
     caption = element_text(
       family = "EB Garamond",
-      size = 8.5,
+      size = 8,
       color = "#6b5d45",
-      hjust = 0.5
+      hjust = 0
     ),
-    margin = margin(18, 20, 12, 20),
+    margin = margin(20, 10, 20, 20),
     background = element_rect(fill = paper, color = paper)
   ) +
   theme_sub_panel(
@@ -164,7 +162,7 @@ p <- ggplot(aug, aes(x = date)) +
   annotate(
     "text",
     x = end_date + 120,
-    y = imp_end - 0.06,
+    y = imp_end - 0.25,
     label = "IMPORTS",
     family = "Playfair Display",
     color = col_imp,
@@ -183,7 +181,10 @@ p <- ggplot(aug, aes(x = date)) +
     lineheight = 0.9
   ) +
   scale_x_date(
-    breaks = as.Date(paste0(seq(1995, 2025, 10), "-01-01")),
+    breaks = c(
+      as.Date(paste0(c(1996, 2000, 2005, 2010, 2015, 2020, 2025), "-01-01")),
+      as.Date("2026-06-01")
+    ),
     date_labels = "%Y",
     expand = expansion(mult = c(0.02, 0.08))
   ) +
@@ -207,10 +208,7 @@ p <- ggplot(aug, aes(x = date)) +
       col_deficit,
       "'>red</b>."
     ),
-    caption = paste0(
-      "Source: Banco Central do Brasil (SGS 22708/22709) — merchandise exports/imports, trailing 12-month sum (current US$, not inflation-adjusted), 1995–2026. ",
-      "After William Playfair's 'Exports & Imports' (1786). • @viniciusoike"
-    ),
+    caption = "Source: Brazilian Central Bank — merchandise exports/imports, 1995–2026. After William Playfair's 'Exports & Imports' (1786) • @viniciusoike",
     x = NULL,
     y = NULL
   ) +
@@ -219,8 +217,8 @@ p <- ggplot(aug, aes(x = date)) +
 ggsave(
   here("2026/plots/17_remake.png"),
   p,
-  width = 10,
-  height = 6,
+  width = 8,
+  height = 5,
   dpi = 400,
   device = ragg::agg_png
 )
