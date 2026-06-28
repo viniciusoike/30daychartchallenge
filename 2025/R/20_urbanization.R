@@ -1,12 +1,17 @@
-library(ragg)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(sf)
-import::from(here, here)
-import::from(readxl, read_excel)
+# Prompt: Time series — Urbanization
+# Rise of one-person households in Brazil (selected states). Source: IBGE (PNADC/A).
 
-dat <- readxl::read_excel(
+library(dplyr)
+library(ggplot2)
+
+import::from(tidyr, fill, pivot_longer)
+import::from(readxl, read_excel)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
+
+dat <- read_excel(
   here("data/day_20/household_composition_br_uf.xlsx"),
   skip = 3)
 
@@ -26,7 +31,7 @@ ufs_alone <- clean_dat |>
   filter(code_state != 1, type_hh != "Total") |>
   mutate(share = count / sum(count) * 100, .by = c("year", "code_state"))
 
-ufs_alone_23 <- filter(ufs_alone, year == 2023)
+# ufs_alone_23 <- filter(ufs_alone, year == 2023)
 
 codes <- c(23, 15, 31, 33)
 
@@ -49,11 +54,11 @@ dat <- dat |>
                          levels = c("CE", "PA", "BR (avg.)", "MG", "RJ"))
   )
 
+# Plot --------------------------------------------------------------------
+
 cores <- c("#114787", "#0B6C5D", "gray20", "#fb8500", "#C29A00")
 offwhite <- "#fefefe"
 font <- "Helvetica Neue"
-
-xlab <- "<span style='font-size: 8pt'> </span>"
 
 p <- ggplot(dat, aes(year, share)) +
   geom_line(
@@ -109,7 +114,9 @@ p <- ggplot(dat, aes(year, share)) +
     axis.text.y = element_blank()
   )
 
-ggsave(here("plots/20_urbanization.png"), p, width = 9.6, height = 6)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/20_urbanization.png"), p, width = 9.6, height = 6, device = agg_png)
 
 # ufs_alone <- ufs_alone |>
 #   filter(year == min(year) | year == max(year), type_hh == "Unipessoal") |>

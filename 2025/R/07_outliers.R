@@ -1,23 +1,30 @@
+# Prompt: Distributions — Outliers
+# GDP per capita across Brazilian cities >50k inhabitants (dotplot + boxplot).
+# Source: IBGE (SIDRA 5938 GDP, 6579 population), 2021.
+
 library(ggplot2)
 library(dplyr)
-library(ragg)
-library(ggdist)
-library(ggdist)
-import::from(here, here)
-import::from(stringr, str_wrap)
-import::from(sidrar, get_sidra)
-import::from(MetBrewer, met.brewer)
+library(patchwork)
 
+import::from(ragg, agg_png)
+import::from(sidrar, get_sidra)
+import::from(geobr, read_municipality)
+import::from(sf, st_drop_geometry)
+import::from(janitor, clean_names)
+import::from(tibble, as_tibble)
+import::from(stringr, str_wrap)
+import::from(MetBrewer, met.brewer)
+import::from(here, here)
 
 # Data --------------------------------------------------------------------
 
-dim_city <- as_tibble(sf::st_drop_geometry(geobr::read_municipality(year = 2021)))
+dim_city <- as_tibble(st_drop_geometry(read_municipality(year = 2021)))
 
 gdp <- get_sidra(5938, variable = 37, period = "2021", geo = "City")
 pop <- get_sidra(6579, variable = 9324, period = "2021", geo = "City")
 
 gdp_sidra <- gdp |>
-  janitor::clean_names() |>
+  clean_names() |>
   as_tibble() |>
   select(
     code_muni = municipio_codigo,
@@ -26,7 +33,7 @@ gdp_sidra <- gdp |>
   mutate(code_muni = as.numeric(code_muni))
 
 pop_sidra <- pop |>
-  janitor::clean_names() |>
+  clean_names() |>
   as_tibble() |>
   select(
     code_muni = municipio_codigo,
@@ -46,6 +53,7 @@ subdat <- dat |>
 
 # Plot --------------------------------------------------------------------
 
+offwhite <- "#f5f5f5"
 # fill color
 col1 <- met.brewer("Hokusai2", n = 12)[8]
 # line color
@@ -115,8 +123,6 @@ p2 <- ggplot(subdat, aes(x = log10(gdppc))) +
     plot.title = element_text(size = 22)
   )
 
-offwhite <- "#f5f5f5"
-
 p1 <- ggplot() +
   geom_boxplot(
     data = subdat,
@@ -130,7 +136,7 @@ p1 <- ggplot() +
     outlier.alpha = 1,
     outlier.size = 3) +
   geom_jitter(
-    data = sample_n(dplyr::filter(subdat, lgdp < 5), 100),
+    data = sample_n(filter(subdat, lgdp < 5), 100),
     aes(x = 1, y = lgdp),
     shape = 21,
     color = "white",
@@ -159,13 +165,20 @@ p1 <- ggplot() +
   )
 
 
-library(patchwork)
-
 panel <- (p2 / p1)
 
 final_plot <- panel + plot_layout(heights = c(0.8, 0.2))
-final_plot
 
-ggsave(here("plots/7_outlier.png"), final_plot, width = 7.32, height = 6.64, dpi = 300)
+# Save --------------------------------------------------------------------
 
-cowplot::save_plot(here("plots/8_outlier.png"), final_plot, base_width = 8, base_height = 5.5)
+ggsave(
+  here("2025/plots/07_outliers.png"),
+  final_plot,
+  width = 7.32,
+  height = 6.64,
+  dpi = 300,
+  device = agg_png
+)
+
+# Alternate cowplot export (mislabeled output, not run)
+# cowplot::save_plot(here("plots/8_outlier.png"), final_plot, base_width = 8, base_height = 5.5)

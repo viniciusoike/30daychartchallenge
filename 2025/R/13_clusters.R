@@ -1,18 +1,28 @@
+# Prompt: Relationships — Clusters
+# Job accessibility (30-min car) across São Paulo. Source: aopdata (IPEA).
+
 library(ggplot2)
 library(sf)
+library(dplyr)
 
-poa <- aopdata::read_access("Porto Alegre", mode = "car", geometry = TRUE)
-spo <- aopdata::read_access("sao paulo", mode = "car", geometry = TRUE)
+import::from(aopdata, read_access)
+import::from(ggthemes, theme_map)
+import::from(ragg, agg_png)
+import::from(here, here)
 
+# Data --------------------------------------------------------------------
 
-ggplot() +
-  geom_sf(data = poa, aes(fill = sqrt(CMATT15)), color = "white", linewidth = 0.1) +
-  scale_fill_viridis_c() +
-  coord_sf()
+spo <- read_access("sao paulo", mode = "car", geometry = TRUE)
 
-BAMMtools::getJenksBreaks(spo$CMATT30, k = 8)
+# Porto Alegre exploration and Jenks breaks check (not run)
+# poa <- read_access("Porto Alegre", mode = "car", geometry = TRUE)
+# ggplot() +
+#   geom_sf(data = poa, aes(fill = sqrt(CMATT15)), color = "white", linewidth = 0.1) +
+#   scale_fill_viridis_c() +
+#   coord_sf()
+# BAMMtools::getJenksBreaks(spo$CMATT30, k = 8)
 
-library(ragg)
+# Plot --------------------------------------------------------------------
 
 font <- "DIN Alternate"
 
@@ -28,14 +38,14 @@ scale_zero_one <- function(x) {
 }
 
 spo <- spo |>
-  dplyr::mutate(
+  mutate(
     scale_jobs = scale_zero_one(ifelse(CMATT15 > 0, sqrt(CMATT15), NA))
   )
 
 plot_map <- ggplot() +
   geom_sf(data = spo, fill = "gray80", color = NA) +
   geom_sf(
-    data = dplyr::filter(spo, scale_jobs > 0),
+    data = filter(spo, scale_jobs > 0),
     aes(fill = scale_jobs, color = scale_jobs)
   ) +
   scale_fill_viridis_c(
@@ -52,7 +62,7 @@ plot_map <- ggplot() +
   ) +
   coord_sf(xlim = c(-46.82, -46.37), ylim = c(-23.98, -23.365)) +
   ggtitle("Job Access in São Paulo") +
-  ggthemes::theme_map(base_family = font) +
+  theme_map(base_family = font) +
   theme(
     panel.background = element_rect(fill = offwhite, color = offwhite),
     plot.background = element_rect(fill = offwhite, color = offwhite),
@@ -70,4 +80,6 @@ plot_map <- ggplot() +
     plot.subtitle = element_text(size = 10, hjust = 0.5)
   )
 
-ggsave(here::here("plots/13_clusters.png"), plot_map, width = 8, height = 9)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/13_clusters.png"), plot_map, width = 8, height = 9, device = agg_png)

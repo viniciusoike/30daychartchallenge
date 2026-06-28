@@ -1,11 +1,18 @@
+# Prompt: Uncertainties — Inclusion
+# Share of Brazilian adults (15+) with a banking relationship, 2006-2022.
+# Source: Brazilian Central Bank (BCB).
+
 library(dplyr)
 library(ggplot2)
-library(ragg)
-library(rbcb)
+
+import::from(rbcb, get_series)
 import::from(tidyr, pivot_longer)
 import::from(purrr, reduce)
 import::from(scales, label_percent)
+import::from(ragg, agg_png)
 import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 codes <- c(25120:25126)
 series_names <- c(
@@ -25,9 +32,12 @@ total <- series |>
   pivot_longer(cols = -"date") |>
   summarise(pop = sum(value), .by = "date")
 
-total |>
-  filter(date == min(date) | date == max(date)) |>
-  mutate(chg = pop / lag(pop) - 1)
+# Growth check (exploratory, not run)
+# total |>
+#   filter(date == min(date) | date == max(date)) |>
+#   mutate(chg = pop / lag(pop) - 1)
+
+# Plot --------------------------------------------------------------------
 
 pal <- c("#076a6c", "#051416", "#d5dadb", "#04454a", "#098b94", "#05947c", "#fefefe")
 font_title <- "Palatino"
@@ -66,5 +76,7 @@ final_plot <- ggplot(data = share, aes(date, share_adults_bank),) +
     plot.title = element_text(size = 24, family = font_title),
     plot.margin = margin(20, 15, 10, 15)
   )
-cowplot::save
-ggsave(here("plots/28_inclusion.png"), final_plot, width = 6 * 1.618, height = 6)
+
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/28_inclusion.png"), final_plot, width = 6 * 1.618, height = 6, device = agg_png)

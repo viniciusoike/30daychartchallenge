@@ -1,19 +1,29 @@
-library(realestatebr)
-library(trendseries)
-library(patchwork)
-library(ragg)
-library(ggtext)
+# Prompt: Relationships — Complicated
+# Divergence of house-price (IGMI-R) vs rental (IVAR) indices in Brazil.
+# Sources: IGMI-R (Abecip) and IVAR (FGV).
+
 library(ggplot2)
 library(dplyr)
-library(tidyr)
-library(stringr)
-import::from(here, here)
+library(patchwork)
+
+import::from(realestatebr, get_rppi_igmi)
+import::from(trendseries, add_trend)
+import::from(tidyr, pivot_longer, nest, unnest)
+import::from(purrr, map)
+import::from(stringr, str_wrap, str_glue, str_replace_all, str_to_lower)
+import::from(stringi, stri_trans_general)
+import::from(ggtext, element_textbox_simple)
+import::from(data.table, fread)
+import::from(readr, parse_date)
+import::from(lubridate, year)
 import::from(MetBrewer, met.brewer)
+import::from(ragg, agg_png)
+import::from(here, here)
 
 str_simplify <- function(x) {
-  y <- stringi::stri_trans_general(x, id = "latin-ascii")
-  y <- stringr::str_replace_all(y, " ", "_")
-  y <- stringr::str_to_lower(y)
+  y <- stri_trans_general(x, id = "latin-ascii")
+  y <- str_replace_all(y, " ", "_")
+  y <- str_to_lower(y)
   return(y)
 }
 
@@ -21,20 +31,20 @@ str_simplify <- function(x) {
 
 igmi <- get_rppi_igmi()
 
-ivar <- data.table::fread(here("data/day_9/xgdvConsulta.csv"), encoding = "Latin-1")
+ivar <- fread(here("data/day_9/xgdvConsulta.csv"), encoding = "Latin-1")
 
 names(ivar) <- c("data", "brasil", "sao_paulo", "rio_de_janeiro", "belo_horizonte", "porto_alegre")
 
 ivar <- ivar |>
-  mutate(date = readr::parse_date(data, format = "%m/%Y")) |>
+  mutate(date = parse_date(data, format = "%m/%Y")) |>
   select(-data) |>
-  tidyr::pivot_longer(cols = brasil:porto_alegre, names_to = "city_name", values_to = "index")
+  pivot_longer(cols = brasil:porto_alegre, names_to = "city_name", values_to = "index")
 
 igmi <- igmi |>
   mutate(city_name = str_simplify(name_muni))
 
 base_igmi <- igmi |>
-  mutate(ano = lubridate::year(date)) |>
+  mutate(ano = year(date)) |>
   filter(date == as.Date("2018-12-01")) |>
   select(name_muni, base_index = index)
 
@@ -64,7 +74,7 @@ brasil <- dat |>
   filter(city_name == "brasil") |>
   group_by(series_name) |>
   nest() |>
-  mutate(trend = purrr::map(data, add_trend, value_colname = "index", trend = "stl")) |>
+  mutate(trend = map(data, add_trend, value_colname = "index", trend = "stl")) |>
   unnest(cols = c(trend)) |>
   ungroup()
 
@@ -72,7 +82,7 @@ brasil <- dat |>
 
 offwhite <- "#F2F0EF"
 font <- "Roboto Condensed"
-cores <- MetBrewer::met.brewer("Manet", 50)[c(8, 40)]
+cores <- met.brewer("Manet", 50)[c(8, 40)]
 
 # Main plot ---------------------------------------------------------------
 
@@ -119,7 +129,7 @@ annotated_plot <- base_plot +
     data = filter(brasil, date == max(date)),
     aes(x = date - months(4),
         y = (max(index) - 2 - (min(index) + 2)) / 2 + min(index) + 2,
-        label = stringr::str_glue("Gap: {round(max(index) - min(index), 1)}%")),
+        label = str_glue("Gap: {round(max(index) - min(index), 1)}%")),
     family = font,
     size = 4
   ) +
@@ -189,16 +199,17 @@ p1 <- annotated_plot +
 trend_cities <- subdat |>
   group_by(city_name, series_name) |>
   nest() |>
-  mutate(trend = purrr::map(data, add_trend, value_colname = "index", trend = "stl")) |>
+  mutate(trend = map(data, add_trend, value_colname = "index", trend = "stl")) |>
   unnest(trend) |>
   ungroup()
 
-trend_cities |>
-  filter(date == max(date)) |>
-  summarise(
-    gap = max(index) - min(index),
-    .by = "city_name"
-  )
+# Per-city gap check (exploratory, not run)
+# trend_cities |>
+#   filter(date == max(date)) |>
+#   summarise(
+#     gap = max(index) - min(index),
+#     .by = "city_name"
+#   )
 
 trend_cities <- trend_cities |>
   mutate(
@@ -256,4 +267,6 @@ panel <- panel + plot_annotation(caption = "Sources: Sales prices (IGMI-R/Abecip
     plot.caption = element_text(family = font)
   )
 
-ggsave(here("plots/9_diverging.png"), panel, width = 11, height = 10)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/15_complicated.png"), panel, width = 11, height = 10, device = agg_png)

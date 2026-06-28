@@ -1,8 +1,20 @@
+# Prompt: Uncertainties — Monochrome
+# Electric-energy consumption vs GDP proxy (IBC-Br), indexed. Source: BCB, Eletrobras.
+
 library(ggplot2)
 library(dplyr)
-library(tidyr)
+
+import::from(tidyr, nest, unnest)
+import::from(tibble, tribble, tibble)
 import::from(purrr, map)
 import::from(stringr, str_wrap)
+import::from(rbcb, get_series)
+import::from(forecast, mstl)
+import::from(lubridate, year)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 codes <- tribble(
   ~code, ~name_series,
@@ -13,7 +25,7 @@ codes <- tribble(
 code_energy <- 1406
 code_gdp_dessaz <- 24364
 
-series <- lapply(codes$code, rbcb::get_series)
+series <- lapply(codes$code, get_series)
 names(series) <- codes$name_series
 series <- lapply(series, \(d) {
   d <- mutate(d, id = names(d)[2])
@@ -26,7 +38,8 @@ tbl_series <- bind_rows(series, .id = "name_series")
 tbl_max_date <- tbl_series |>
   summarise(m = max(date), .by = "name_series")
 
-length(unique(tbl_max_date$m)) == 1
+# stopifnot-style check that both series share the same max date (not run)
+# length(unique(tbl_max_date$m)) == 1
 
 max_date <- unique(tbl_max_date$m)
 
@@ -43,7 +56,7 @@ energ_nest <- tbl_series |>
   nest() |>
   mutate(
     y = map(data, \(d) stats::ts(log(d$value), start = c(2003, 1), frequency = 12)),
-    model_stl = map(y, forecast::mstl, s.window = 51, robust = TRUE),
+    model_stl = map(y, mstl, s.window = 51, robust = TRUE),
     decomp = map(model_stl, as.data.frame)
   )
 
@@ -63,7 +76,7 @@ dat <- energ_trend |>
 
 # Index values in a common year
 base_index <- dat |>
-  mutate(ano = lubridate::year(date)) |>
+  mutate(ano = year(date)) |>
   filter(ano == 2005) |>
   summarise(base_index = mean(value), .by = "name_series")
 
@@ -76,7 +89,7 @@ tbl_energ <- tbl_series |>
   filter(id == "1406", date >= as.Date("2003-01-01"))
 
 base_index_energ <- tbl_energ |>
-  mutate(ano = lubridate::year(date)) |>
+  mutate(ano = year(date)) |>
   filter(ano == 2005) |>
   summarise(base_index = mean(value), .by = "name_series")
 
@@ -89,7 +102,7 @@ dbreaks <- c(
   seq(as.Date("2005-01-01"), as.Date("2025-01-01"), by = "5 year")
 )
 
-library(ragg)
+# Plot --------------------------------------------------------------------
 
 font <- "Futura"
 
@@ -110,12 +123,12 @@ offwhite <- "#ffffff"
 plot_line <- ggplot() +
   geom_hline(yintercept = 100) +
   geom_rect(
-    data = dplyr::filter(codace, rec_end >= as.Date("2003-06-01")),
+    data = filter(codace, rec_end >= as.Date("2003-06-01")),
     aes(xmin = rec_start, xmax = rec_end, ymin = -Inf, ymax = Inf, group = label),
     alpha = 0.4
   ) +
   geom_text(
-    data = dplyr::filter(codace, rec_end >= as.Date("2003-06-01")),
+    data = filter(codace, rec_end >= as.Date("2003-06-01")),
     aes(x = (rec_end - rec_start) / 2 + rec_start, y = 160, label = str_wrap(label, 7)),
     size = 3,
     family = font
@@ -182,4 +195,6 @@ plot_line <- ggplot() +
     axis.text.x = element_text(size = 12, color = "#6B6865")
   )
 
-ggsave("plots/26_monochrome.png", plot_line, width = 9, height = 5.3)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/26_monochrome.png"), plot_line, width = 9, height = 5.3, device = agg_png)

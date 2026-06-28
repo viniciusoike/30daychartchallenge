@@ -1,25 +1,40 @@
+# Prompt: Time series — Stars
+# Monthly sunspot counts vs US recessions (the sunspot-economy myth).
+# Sources: Royal Observatory of Belgium (SIDC), NBER, Wikipedia (solar cycles).
+
 library(ggplot2)
 library(dplyr)
-library(rvest)
-library(stringr)
+
+import::from(rvest, read_html, html_table)
+import::from(stringr, str_extract, str_remove, str_trim, str_wrap)
+import::from(purrr, pluck)
+import::from(janitor, clean_names)
+import::from(readr, parse_date)
+import::from(readxl, read_excel)
+import::from(lubridate, make_date)
+import::from(RcppRoll, roll_mean)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 url <- "https://en.wikipedia.org/wiki/List_of_solar_cycles"
 
 dating <- read_html(url) |>
   html_table() |>
-  purrr::pluck(1) |>
-  janitor::clean_names()
+  pluck(1) |>
+  clean_names()
 
 cycle_dating <- dating |>
   filter(solar_cycle != "Average") |>
   mutate(
     start_year = as.numeric(str_extract(start_min_y_m, "^[0-9]{4}")),
     start_month = str_extract(start_min_y_m, "(?<=– )[A-z]{3}"),
-    start_date = readr::parse_date(paste(start_year, start_month, "01", sep = "/"), format = "%Y/%b/%d")
+    start_date = parse_date(paste(start_year, start_month, "01", sep = "/"), format = "%Y/%b/%d")
   )
 
-recession <- readxl::read_excel(
-  "data/day_22/BCDC_spreadsheet_for_website.xlsx",
+recession <- read_excel(
+  here("data/day_22/BCDC_spreadsheet_for_website.xlsx"),
   sheet = "NBER Chronology",
   range = "C5:J38",
   col_names = c("peak", "trough", "peak_month_number", "trough_month_number",
@@ -30,15 +45,15 @@ recession <- recession |>
   mutate(
     date_ym_peak = str_trim(str_remove(peak, "\\(.+\\)")),
     date_ym_trough = str_trim(str_remove(trough, "\\(.+\\)")),
-    rec_start = readr::parse_date(date_ym_peak, format = "%B %Y"),
-    rec_end = readr::parse_date(date_ym_trough, format = "%B %Y")
+    rec_start = parse_date(date_ym_peak, format = "%B %Y"),
+    rec_end = parse_date(date_ym_trough, format = "%B %Y")
   )
 
 
 # Monthly numbers of sunspots, as from the World Data Center, aka SIDC
 
 dat <- read.delim(
-  "data/day_22/SN_m_tot_V2.0.csv",
+  here("data/day_22/SN_m_tot_V2.0.csv"),
   sep = ";",
   dec = ".",
   header = FALSE
@@ -49,20 +64,22 @@ dat <- as_tibble(dat)
 
 dat <- dat |>
   mutate(
-    date = lubridate::make_date(year, month, 1)
+    date = make_date(year, month, 1)
   )
 
 model_stl <- stl(ts(dat$sunspot, frequency = 12), s.window = 27)
-filter_ma <- stats::filter(dat$sunspot, sides = 1, filter = rep(1/23, 23))
+# filter_ma <- stats::filter(dat$sunspot, sides = 1, filter = rep(1 / 23, 23))
 
 dat$trend <- as.numeric(model_stl$time.series[, "trend"])
 
 dat <- dat |>
   mutate(
-    trend_ma = RcppRoll::roll_mean(sunspot, 29, fill = NA)
+    trend_ma = roll_mean(sunspot, 29, fill = NA)
   )
 
-sunspots <- dplyr::filter(dat, year >= 1855)
+sunspots <- filter(dat, year >= 1855)
+
+# Plot --------------------------------------------------------------------
 
 font = "Avenir"
 offwhite <- "#fefefe"
@@ -91,7 +108,7 @@ p <- ggplot() +
     color = "#9b2226"
   ) +
   geom_vline(
-    data = dplyr::filter(cycle_dating, start_date >= as.Date("1855-01-01")),
+    data = filter(cycle_dating, start_date >= as.Date("1855-01-01")),
     aes(xintercept = start_date),
     color = "gray50",
     linetype = 2
@@ -140,4 +157,6 @@ p <- ggplot() +
     axis.ticks.length = unit(7, "pt")
   )
 
-ggsave("plots/22_stars.png", p, width = 14, height = 7)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/22_stars.png"), p, width = 14, height = 7, device = agg_png)

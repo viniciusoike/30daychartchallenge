@@ -1,12 +1,20 @@
+# Prompt: Time series — Fossils
+# Global fossil-fuel consumption by fuel type, 1920-2023.
+# Source: OWID — Energy Institute, Statistical Review of World Energy (2024).
+
 library(dplyr)
-library(ragg)
 library(ggplot2)
+
 import::from(readr, read_csv)
 import::from(stringr, str_to_title)
 import::from(tidyr, pivot_longer)
+import::from(scales, label_number)
+import::from(ragg, agg_png)
 import::from(here, here)
 
-dat <- read_csv("data/day_21/global-fossil-fuel-consumption/global-fossil-fuel-consumption.csv")
+# Data --------------------------------------------------------------------
+
+dat <- read_csv(here("data/day_21/global-fossil-fuel-consumption/global-fossil-fuel-consumption.csv"))
 
 series <- dat |>
   rename(
@@ -25,8 +33,10 @@ subseries <- series |>
     fuel = factor(fuel, levels = c("oil", "gas", "coal"))
   )
 
+# Plot --------------------------------------------------------------------
+
 font <- "Roboto Slab"
-cores <- c("#0a9396", "#ee9b00", "#ae2012")
+# cores <- c("#0a9396", "#ee9b00", "#ae2012")
 cores <- c("#22223b", "#4a4e69", "#9a8c98")
 offwhite <- "#fefefe"
 
@@ -49,7 +59,7 @@ p_fossil <- ggplot(subseries, aes(year, consumption, fill = fuel)) +
   ) +
   scale_y_continuous(
     breaks = seq(0, 140000, 20000),
-    labels = scales::label_number(big.mark = "."),
+    labels = label_number(big.mark = "."),
     expand = expansion(add = c(0, 0.95))
   ) +
   labs(
@@ -75,7 +85,9 @@ p_fossil <- ggplot(subseries, aes(year, consumption, fill = fuel)) +
     plot.background = element_rect(fill = offwhite, color = offwhite)
   )
 
-ggsave(here("plots/21_fossils.png"), p_fossil, width = 9, height = 5.1)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/21_fossils.png"), p_fossil, width = 9, height = 5.1, device = agg_png)
 
 # ggplot(subseries, aes(year, consumption, fill = fuel, color = fuel)) +
 #   geom_area(alpha = 0.5) +

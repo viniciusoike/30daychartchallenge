@@ -1,31 +1,38 @@
-library(tidyverse)
-library(GetBCBData)
-library(realestatebr)
-library(RcppRoll)
-library(patchwork)
-library(trendseries)
-library(ragg)
-library(here)
-source(here::here("R/adjust_inflation.R"))
-# source(here::here("R/functions/series_trend.R"))
+# Prompt: Relationships — Negative
+# Real estate credit vs interest/SELIC rates in Brazil (dual axis).
+# Source: Brazilian Central Bank (BCB).
 
-pretty_number <- function(x, digits = 1, percent = FALSE) {
-  x <- round(x, digits = digits)
-  x <- format(x, big.mark = ".", decimal.mark = ",")
-  if (isTRUE(percent)) {
-    x <- paste0(x, "%")
-  }
-  return(x)
-}
+library(dplyr)
+library(ggplot2)
 
-str_simplify <- function(x) {
+import::from(GetBCBData, gbcbd_get_series)
+import::from(RcppRoll, roll_meanr)
+import::from(trendseries, add_trend)
+import::from(stringr, str_detect)
+import::from(tibble, as_tibble)
+import::from(ragg, agg_png)
+import::from(here, here)
 
-  y <- stringi::stri_trans_general(x, id = "latin-ascii")
-  y <- stringr::str_replace_all(y, " ", "_")
-  y <- stringr::str_to_lower(y)
-  return(y)
+source(here("2025/R/adjust_inflation.R"))
 
-}
+# Unused string/number helpers (not run)
+# pretty_number <- function(x, digits = 1, percent = FALSE) {
+#   x <- round(x, digits = digits)
+#   x <- format(x, big.mark = ".", decimal.mark = ",")
+#   if (isTRUE(percent)) {
+#     x <- paste0(x, "%")
+#   }
+#   return(x)
+# }
+#
+# str_simplify <- function(x) {
+#   y <- stringi::stri_trans_general(x, id = "latin-ascii")
+#   y <- stringr::str_replace_all(y, " ", "_")
+#   y <- stringr::str_to_lower(y)
+#   return(y)
+# }
+
+# Data --------------------------------------------------------------------
 
 codes <- c(
   "fimob_pf_total" = 20704,
@@ -44,7 +51,7 @@ bcb_series <- rename(bcb_series, date = ref.date)
 taxa <- bcb_series |>
   filter(str_detect(series.name, "^taxa")) |>
   mutate(
-    trend_ma = RcppRoll::roll_meanr(value, n = 9),
+    trend_ma = roll_meanr(value, n = 9),
     .by = "series.name"
   )
 
@@ -59,7 +66,7 @@ taxa_recent <- filter(taxa, date >= as.Date("2016-01-01"))
 fimob_recent <- filter(fimob, date >= as.Date("2016-01-01"))
 taxa_selic <- filter(bcb_series, series.name == "selic", date >= as.Date("2016-01-01"), date <= as.Date("2025-02-01"))
 
-hrbrthemes::ipsum_pal()
+# Plot --------------------------------------------------------------------
 
 cores <- c("#01665e", "gray20", "#4575b4")
 offwhite <- "#ffffff"
@@ -130,7 +137,10 @@ p <- ggplot() +
     panel.grid.minor = element_blank()
   )
 
-ggsave(here("plots/16_negative.png"), p, width = 8, height = 6.2)
+# Save --------------------------------------------------------------------
 
-bcb_series |>
-  filter(series.name %in% c("fimob_pf_total", "taxa_fimob_pf_total"))
+ggsave(here("2025/plots/16_negative.png"), p, width = 8, height = 6.2, device = agg_png)
+
+# Exploratory (not run)
+# bcb_series |>
+#   filter(series.name %in% c("fimob_pf_total", "taxa_fimob_pf_total"))

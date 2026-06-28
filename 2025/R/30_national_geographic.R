@@ -1,22 +1,22 @@
+# Prompt: Uncertainties — National Geographic
+# Amazon deforestation over time + by state, Nat-Geo styled. Source: INPE/PRODES.
+
 library(ggplot2)
 library(dplyr)
-library(showtext)
-library(ggtext)
 library(sf)
-library(rvest)
 
+import::from(rvest, read_html, html_table)
+import::from(tidyr, pivot_longer)
 import::from(zoo, rollmean)
 import::from(geobr, read_state)
-import::from(tidyr, pivot_longer)
+import::from(ggtext, element_textbox)
+import::from(ggthemes, theme_map)
+import::from(tibble, tibble, as_tibble)
+import::from(ragg, agg_png)
+import::from(here, here)
 
-
-# Define font
-# Candidates:
-# PT SANS
-# JOST
-# REEM KUFI
-sysfonts::font_add_google("Jost", "Jost")
-showtext_auto()
+# Rendered via the ragg device (see ggsave); "Jost" must be installed
+# system-wide for systemfonts/ragg to pick it up by family name.
 font <- "Jost"
 
 # Data --------------------------------------------------------------------
@@ -94,7 +94,7 @@ plot_col <- ggplot(deforestation_total, aes(year, area)) +
     size = 3.5,
     family = font,
     hjust = 0,
-    color = colors[2]
+    color = basic_colors[2]
   ) +
   geom_hline(yintercept = 0) +
   annotate(
@@ -106,7 +106,7 @@ plot_col <- ggplot(deforestation_total, aes(year, area)) +
     size = 3.5
   ) +
   geom_curve(
-    data = dplyr::filter(deforestation_total, year == 2020),
+    data = filter(deforestation_total, year == 2020),
     aes(x = 2020, xend = 2018, y = area, yend = 13000),
     angle = 90,
     arrow = arrow(length = unit(2, "pt"))
@@ -155,7 +155,7 @@ plot_map <- ggplot(states_deforest) +
   labs(
     title = "DEFORESTATION BY STATE (2023)"
   ) +
-  ggthemes::theme_map(base_family = "Jost") +
+  theme_map(base_family = "Jost") +
   theme(
     panel.background = element_rect(fill = pal[6], color = pal[6]),
     plot.background = element_rect(fill = pal[6], color = pal[6]),
@@ -165,10 +165,24 @@ plot_map <- ggplot(states_deforest) +
     plot.title = element_text(size = 22, hjust = 0.5)
   )
 
-showtext_opts(dpi = 300)
-showtext_auto()
-ggsave("plots/30_national_geographic.png", plot_col, width = 7.76, height = 4.36, dpi = 300)
-ggsave("plots/30_national_geographic_map.png", plot_map, width = 7, height = 7, dpi = 300)
+# Save --------------------------------------------------------------------
+
+ggsave(
+  here("2025/plots/30_national_geographic.png"),
+  plot_col,
+  width = 7.76,
+  height = 4.36,
+  dpi = 300,
+  device = agg_png
+)
+ggsave(
+  here("2025/plots/30_national_geographic_map.png"),
+  plot_map,
+  width = 7,
+  height = 7,
+  dpi = 300,
+  device = agg_png
+)
 
 
 

@@ -1,10 +1,17 @@
-library(readxl)
+# Prompt: Distributions — Histograms
+# GDP per capita growth distributions for commodity exporters, 1950-2022.
+# Source: Maddison Project (2024).
+
 library(dplyr)
 library(ggplot2)
-library(ragg)
 library(patchwork)
-import::from(here, here)
 
+import::from(readxl, read_excel)
+import::from(tibble, tibble)
+import::from(stringr, str_glue)
+import::from(purrr, pmap)
+import::from(ragg, agg_png)
+import::from(here, here)
 
 # Data --------------------------------------------------------------------
 
@@ -87,7 +94,7 @@ plot_histogram <- function(country, text_x = 5, text_y = 22.5) {
   nbins <- nclass.FD(na.omit(sub$chg))
 
   # Text label: avg growth
-  text_label <- stringr::str_glue(
+  text_label <- str_glue(
     "Avg. = {round(avg_chg, 1)}%"
   )
 
@@ -127,7 +134,7 @@ params <- tibble(
   text_y = c(22.5, 28, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5)
 )
 
-plots <- purrr::pmap(params, plot_histogram)
+plots <- pmap(params, plot_histogram)
 names(plots) <- countries
 
 adjust_plot <- function(p, type) {
@@ -234,4 +241,12 @@ panel <- panel +
     plot.background = element_rect(color = offwhite, fill = offwhite)
   )
 
-ggsave("plots/8_histograms.png", panel, width = 15, height = 10.9)
+# Save --------------------------------------------------------------------
+
+ggsave(
+  here("2025/plots/08_histograms.png"),
+  panel,
+  width = 15,
+  height = 10.9,
+  device = agg_png
+)

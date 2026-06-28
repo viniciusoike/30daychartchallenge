@@ -1,30 +1,37 @@
+# Prompt: Time series — Smooth
+# S&P 500 closing price shown through many smoothers (grid). Source: Yahoo Finance.
+
 library(dplyr)
 library(ggplot2)
-library(ragg)
 library(patchwork)
+
 import::from(tidyquant, tq_get)
+import::from(forecast, Arima, mstl)
+import::from(TTR, DEMA, EMA, SMA, ALMA)
+import::from(scales, label_number)
+import::from(lubridate, day, month)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 indexes <- tq_get(c("^GSPC", "^IXIC", "^DJI"))
-
-spfull <- filter(indexes, symbol == "^GSPC")
 
 sp500 <- filter(indexes, symbol == "^GSPC", date >= as.Date("2021-01-01"))
 
 xsp500 <- ts(sp500$close, frequency = 252)
 ysp500 <- ts(sp500$close, frequency = 7)
 
-arma <- arima(xsp500, order = c(0, 2, 2))
-
 arma_trend <- Arima(ysp500, order = c(1, 0, 1))
 arma_trend <- fitted(arma_trend)
 
 sp500 <- sp500 |>
   mutate(
-    dema = TTR::DEMA(close, 21),
-    ema = TTR::EMA(close, 21),
-    ma5 = TTR::SMA(close, n = 5),
-    ma21 = TTR::SMA(close, n = 21),
-    alma = TTR::ALMA(close)[, 1],
+    dema = DEMA(close, 21),
+    ema = EMA(close, 21),
+    ma5 = SMA(close, n = 5),
+    ma21 = SMA(close, n = 21),
+    alma = ALMA(close)[, 1],
     tukey = runmed(close, k = 13)
   )
 
@@ -37,7 +44,7 @@ sp500$stl <- as.numeric(as_tibble(stl_sp500$time.series)$trend)
 sp500$mstl <- as.numeric(as_tibble(mstl_sp500)$Trend)
 sp500$arma <- as.numeric(arma_trend)
 sp500$spline <- as.numeric(cubic_spline$y)
-sp500$kalman <- as.numeric(smooth_kalman[, "slope"])
+# sp500$kalman <- as.numeric(smooth_kalman[, "slope"])  # smooth_kalman undefined; column unused
 # sp500$friedman <- as.numeric(super_smooth$y)
 
 dat <- filter(sp500, date >= as.Date("2024-10-01"))
@@ -59,7 +66,7 @@ cores <- c("#1d3557", "#457b9d")
 offwhite <- "#fefefe"
 
 ds <- dat |>
-  mutate(d = lubridate::day(date), m = lubridate::month(date)) |>
+  mutate(d = day(date), m = month(date)) |>
   group_by(m) |>
   summarise(date_start = min(date))
 
@@ -93,7 +100,7 @@ plot_series <- function(series, title = "") {
       color = cores[1]
     ) +
     scale_x_date(date_labels = "%y-%b", date_breaks = "1 month") +
-    scale_y_continuous(labels = scales::label_number(big.mark = ".")) +
+    scale_y_continuous(labels = label_number(big.mark = ".")) +
     labs(x = NULL, y = NULL, title = title) +
     theme_plot
 
@@ -109,7 +116,7 @@ plot_series_smooth <- function(method, title = "", k = NULL) {
       color = cores[1]
     ) +
     scale_x_date(date_labels = "%y-%b", date_breaks = "1 month") +
-    scale_y_continuous(labels = scales::label_number(big.mark = ".")) +
+    scale_y_continuous(labels = label_number(big.mark = ".")) +
     labs(x = NULL, y = NULL, title = title) +
     theme_plot
 
@@ -159,7 +166,7 @@ plot_series_continuous <- function(series, title = "") {
       color = cores[1]
     ) +
     scale_x_continuous(breaks = inds, labels = dlabels) +
-    scale_y_continuous(labels = scales::label_number(big.mark = ".")) +
+    scale_y_continuous(labels = label_number(big.mark = ".")) +
     labs(x = NULL, y = NULL, title = title) +
     theme_plot
 
@@ -234,4 +241,6 @@ panel <- panel & plot_annotation(
   )
 )
 
-ggsave(here::here("plots/19_smoothing_2.png"), panel, width = 14, height = 9.5)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/19_smoothing_2.png"), panel, width = 14, height = 9.5, device = agg_png)

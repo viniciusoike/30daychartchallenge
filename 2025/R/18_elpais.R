@@ -1,11 +1,16 @@
+# Prompt: Relationships — El País
+# Real (2022 USD) arabica vs robusta coffee prices, El País-style line chart.
+# Sources: CEPEA (ESALQ/USP) and FRED (US inflation).
 
 library(ggplot2)
 library(dplyr)
-library(ragg)
-library(readxl)
-library(priceR)
 library(patchwork)
-library(lubridate)
+
+import::from(readxl, read_excel)
+import::from(priceR, adjust_for_inflation)
+import::from(RcppRoll, roll_meanr)
+import::from(lubridate, months)
+import::from(ragg, agg_png)
 import::from(here, here)
 
 theme_elpais <- function(
@@ -84,7 +89,7 @@ series$usd_2022 <- adjust_for_inflation(
 series <- series |>
   filter(usd_2022 > 0) |>
   mutate(
-    trend = RcppRoll::roll_meanr(usd_2022, n = 22, fill = NA), .by = "crop"
+    trend = roll_meanr(usd_2022, n = 22, fill = NA), .by = "crop"
     )
 
 # 1997, supply shortage, low inventory, rough winter (El Nino)
@@ -108,9 +113,9 @@ dbreaks <- as.Date(paste0(c(1997, 2000, 2005, 2010, 2015, 2020, 2025), "-01-01")
 xpos <- sapply(dbreaks, \(x) which.min(abs(series$date - x)))
 dfx <- series[xpos, ]
 
-yend <- series |>
-  filter(date %in% dbreaks) |>
-  summarise(m = max(trend), .by = "date")
+# yend <- series |>
+#   filter(date %in% dbreaks) |>
+#   summarise(m = max(trend), .by = "date")
 
 
 ## Plot --------------------------------------------------------------------
@@ -159,8 +164,12 @@ final_plot <- base_plot + labs(x = NULL, y = NULL) &
   theme_elpais() +
   theme(legend.position = c(-.05, 1), legend.direction = "horizontal")
 
+# Save --------------------------------------------------------------------
+
 ggsave(
-  here("plots/18_el_pais.png"),
+  here("2025/plots/18_el_pais.png"),
   final_plot,
-  width = 6 * 1.618, height = 6
+  width = 6 * 1.618,
+  height = 6,
+  device = agg_png
 )

@@ -1,11 +1,24 @@
-library(tidyverse)
+# Prompt: Uncertainties — Risk
+# Brazil's EMBI+ country-risk over recent economic history, annotated.
+# Source: J.P. Morgan via Ipeadata.
+
+library(dplyr)
 library(ggplot2)
-library(ragg)
+
 import::from(ipeadatar, ipeadata)
+import::from(tibble, tribble, tibble)
+import::from(stringr, str_wrap, str_count)
+import::from(scales, label_number)
+import::from(MetBrewer, met.brewer)
+import::from(lubridate, months)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 embi <- ipeadata("JPM366_EMBI366")
 
-codace <- tibble::tribble(
+codace <- tribble(
   ~rec_start,               ~rec_end, ~label,
   #-------------------#----------------------#----------#
   as.Date("1997-10-01"), as.Date("1999-01-01"), "FHC-1",
@@ -17,7 +30,7 @@ codace <- tibble::tribble(
 )
 
 # Adjusted Itamar Franco and Lula (III) to fit better with EMBI
-presidents <- tibble::tribble(
+presidents <- tribble(
   ~start,         ~end, ~name,
   "1979-12-01", "1985-02-01", "Figueiredo",
   "1985-03-01", "1989-12-01", "Sarney",
@@ -32,54 +45,55 @@ presidents <- tibble::tribble(
 )
 
 presidents <- presidents |>
-  dplyr::mutate(
+  mutate(
     start = as.Date(start),
     end = as.Date(end),
-    x_label = dplyr::if_else(name == "Collor", start + months(6), start + months(3))
+    x_label = if_else(name == "Collor", start + months(6), start + months(3))
   ) |>
   filter(end >= min(embi$date))
 
-df <- tidyr::tribble(
-  ~date, ~event, ~date_label,
-  "1980-01-01", "Delfim + Oil Crisis", "DEC 1979",
-  "1983-02-01", "Delfim (2nd)", "FEB 1983",
-  "1985-05-01", "Military Regime Ends", "MAR 1985",
-  "1986-04-01", "Cruzado Plan", "FEB 1986",
-  "1987-08-01", "Bresser Plan", "JUN 1987",
-  "1989-03-01", "Verão Plan", "JAN 1989",
-  "1990-05-01", "Collor Plan", "MAR 1990",
-  "1991-04-01", "Collor Plan II", "JAN 1991",
-  "1993-01-01", "Collor Impeachment", "DEC 1992",
-  "1994-08-01", "Real Plan", "JUL 1994",
-  "1999-01-01", "Flotaing Exchange Rate", "JAN '99",
-  "1999-08-01", "Inflation Targeting", "JUN '99",
-  "2000-07-01", "New Fiscal Regime", "MAY '00",
-  "2002-11-01", "Argentina + Lula Confidence Crisis", "2002",
-  "2008-04-01", "Brazil gains Investment Grade", NA,
-  "2008-07-01", "Great Financial Recession", "2008",
-  "2015-09-01", "Brazil loses Investment Grade", "2015",
-  "2016-08-01", "Dilma Impeachment", "AUG 2016",
-  "2020-03-01", "Covid-19", "MAR 2020",
-  "2021-03-01", "Central Bank Independence", "FEB 2021"
-)
+# Superseded first events table (joined undefined `ipca`; overwritten below, not run)
+# df <- tribble(
+#   ~date, ~event, ~date_label,
+#   "1980-01-01", "Delfim + Oil Crisis", "DEC 1979",
+#   "1983-02-01", "Delfim (2nd)", "FEB 1983",
+#   "1985-05-01", "Military Regime Ends", "MAR 1985",
+#   "1986-04-01", "Cruzado Plan", "FEB 1986",
+#   "1987-08-01", "Bresser Plan", "JUN 1987",
+#   "1989-03-01", "Verão Plan", "JAN 1989",
+#   "1990-05-01", "Collor Plan", "MAR 1990",
+#   "1991-04-01", "Collor Plan II", "JAN 1991",
+#   "1993-01-01", "Collor Impeachment", "DEC 1992",
+#   "1994-08-01", "Real Plan", "JUL 1994",
+#   "1999-01-01", "Flotaing Exchange Rate", "JAN '99",
+#   "1999-08-01", "Inflation Targeting", "JUN '99",
+#   "2000-07-01", "New Fiscal Regime", "MAY '00",
+#   "2002-11-01", "Argentina + Lula Confidence Crisis", "2002",
+#   "2008-04-01", "Brazil gains Investment Grade", NA,
+#   "2008-07-01", "Great Financial Recession", "2008",
+#   "2015-09-01", "Brazil loses Investment Grade", "2015",
+#   "2016-08-01", "Dilma Impeachment", "AUG 2016",
+#   "2020-03-01", "Covid-19", "MAR 2020",
+#   "2021-03-01", "Central Bank Independence", "FEB 2021"
+# )
 
-df <- df |>
-  dplyr::mutate(
-    date = as.Date(date),
-    event_label = stringr::str_wrap(event, width = 9)
-  )
+# df <- df |>
+#   mutate(
+#     date = as.Date(date),
+#     event_label = str_wrap(event, width = 9)
+#   )
 
-events <- dplyr::left_join(df, ipca, by = "date")
+# events <- left_join(df, ipca, by = "date")
 
-events <- events |>
-  dplyr::mutate(
-    yseg = c(-8, -9.5, 25, -9.5, 45, -9.5, -9.5, 55, -9.5, 65, 10, -9.5, 15, -9.5, -8, 10, 10, -9.5, -10, 10),
-    x = stringr::str_count(event_label, "\\\n"),
-    vjust = 1.5 + 1.5 * x,
-    ytext = ifelse(yseg < 0, yseg - vjust, yseg + vjust)
-  )
+# events <- events |>
+#   mutate(
+#     yseg = c(-8, -9.5, 25, -9.5, 45, -9.5, -9.5, 55, -9.5, 65, 10, -9.5, 15, -9.5, -8, 10, 10, -9.5, -10, 10),
+#     x = str_count(event_label, "\\\n"),
+#     vjust = 1.5 + 1.5 * x,
+#     ytext = ifelse(yseg < 0, yseg - vjust, yseg + vjust)
+#   )
 
-df <- tidyr::tribble(
+df <- tribble(
   ~date,                          ~event,        ~date_label,    ~yseg,
   "1994-08-01", "Real Plan ends Hyperinflation",      "JUL 1994",   -250,
   "1997-06-02", "Asian Financial Crisis",             "1997",       -250,
@@ -108,16 +122,16 @@ find_nearest_date <- function(ref_date, date_vector) {
 }
 
 df <- df |>
-  dplyr::mutate(
+  mutate(
     date = as.Date(date),
-    event_label = stringr::str_wrap(event, width = 9)
+    event_label = str_wrap(event, width = 9)
   ) |>
-  dplyr::rowwise() |>
-  dplyr::mutate(
+  rowwise() |>
+  mutate(
     date_adjusted = find_nearest_date(date, embi$date)
   )
 
-events <- dplyr::left_join(df, embi, by = c("date_adjusted" = "date"))
+events <- left_join(df, embi, by = c("date_adjusted" = "date"))
 
 left_event <- c(
   "Russian Crisis",
@@ -127,24 +141,26 @@ left_event <- c(
 )
 
 events <- events |>
-  dplyr::mutate(
+  mutate(
     #yseg = c(-4, 7, -4, 14, -4, -3, -3, 12, 13, -4, 8, -4, 8, -4, -4, -4),
-    x_event_label = dplyr::if_else(event %in% left_event, date - months(12), date),
-    y_date_label = dplyr::if_else(yseg > 0, yseg - 150, -150),
-    x = stringr::str_count(event_label, "\\\n"),
+    x_event_label = if_else(event %in% left_event, date - months(12), date),
+    y_date_label = if_else(yseg > 0, yseg - 150, -150),
+    x = str_count(event_label, "\\\n"),
     vjust = 45 + 45 * x,
     ytext = ifelse(yseg < 0, yseg - vjust, yseg + vjust),
-    segment_end = dplyr::if_else(event %in% left_event, date - months(12), date + months(12))
+    segment_end = if_else(event %in% left_event, date - months(12), date + months(12))
   )
 
-df_axis_text <- tibble(
-  x = as.Date("1992-01-01"),
-  y = seq(0, 2500, 500),
-  label = format(y, big.mark = ",")
-)
+# Manual y-axis labels (built but unused, not run)
+# df_axis_text <- tibble(
+#   x = as.Date("1992-01-01"),
+#   y = seq(0, 2500, 500),
+#   label = format(y, big.mark = ",")
+# )
+# df_axis_text <- df_axis_text |>
+#   mutate(label = ifelse(y == 2500, paste(label, "Basis Points"), label))
 
-df_axis_text <- df_axis_text |>
-  mutate(  label = ifelse(y == 2500, paste(label, "Basis Points"), label))
+# Plot --------------------------------------------------------------------
 
 font <- "Avenir"
 
@@ -160,8 +176,8 @@ base_plot <- ggplot() +
   ) +
   scale_y_continuous(
     breaks = seq(0, 2500, 500),
-    labels = scales::label_number(big.mark = ",")) +
-  scale_fill_manual(values = MetBrewer::met.brewer("VanGogh1", n = 12)[c(7, 4, 2, 12, 10, 8)]) +
+    labels = label_number(big.mark = ",")) +
+  scale_fill_manual(values = met.brewer("VanGogh1", n = 12)[c(7, 4, 2, 12, 10, 8)]) +
   guides(fill = "none")
 
 rect_plot <- base_plot +
@@ -221,7 +237,7 @@ annotated_plot <- rect_plot +
   # Events labels
   geom_text(
     data = events,
-    aes(x = x_event_label, y = ytext, label = stringr::str_wrap(event, 11)),
+    aes(x = x_event_label, y = ytext, label = str_wrap(event, 11)),
     size = 3,
     hjust = 0,
     lineheight = .8,
@@ -252,4 +268,6 @@ final_plot <- annotated_plot +
     plot.caption = element_text(color = "gray30")
   )
 
-ggsave(here::here("plots/25_risk.png"), final_plot, width = 12, height = 6.5)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/25_risk.png"), final_plot, width = 12, height = 6.5, device = agg_png)

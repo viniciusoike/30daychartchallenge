@@ -1,7 +1,22 @@
-library(readxl)
+# Prompt: Comparisons — Slope
+# Cars per 1,000 inhabitants by state, 2000 vs 2010 vs 2025.
+# Sources: SENATRAN (vehicle fleet) and IBGE (Census population).
+
 library(dplyr)
-library(here)
+library(ggplot2)
+
+import::from(readxl, read_excel)
 import::from(sidrar, get_sidra)
+import::from(geobr, read_state)
+import::from(janitor, clean_names)
+import::from(tibble, as_tibble)
+import::from(tidyr, pivot_wider)
+import::from(stringr, str_to_title)
+import::from(sf, st_drop_geometry)
+import::from(MetBrewer, met.brewer)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 frota00 <- read_excel(here("data/day_2/Frota Tipo-UF 2000.xls"),
                       range = "A7:C33",
@@ -21,27 +36,27 @@ frota25 <- read_excel(
   col_names = c("name_state", "total", "cars")
   )
 
-dim_state <- geobr::read_state(year = 2010)
-dim_state <- as_tibble(sf::st_drop_geometry(dim_state))
+dim_state <- read_state(year = 2010)
+dim_state <- as_tibble(st_drop_geometry(dim_state))
 dim_state <- dim_state |>
   mutate(name_state = ifelse(name_state == "Espirito Santo", "Espírito Santo", name_state))
 
 
 frota00 <- frota00 |>
   mutate(
-    name_state = stringr::str_to_title(name_state)) |>
+    name_state = str_to_title(name_state)) |>
   left_join(dim_state, by = "name_state") |>
   filter(!is.na(code_state))
 
 frota10 <- frota10 |>
   mutate(
-    name_state = stringr::str_to_title(name_state)) |>
+    name_state = str_to_title(name_state)) |>
   left_join(dim_state, by = "name_state") |>
   filter(!is.na(code_state))
 
 frota25 <- frota25 |>
   mutate(
-    name_state = stringr::str_to_title(name_state)) |>
+    name_state = str_to_title(name_state)) |>
   left_join(dim_state, by = "name_state") |>
   filter(!is.na(code_state))
 
@@ -61,7 +76,7 @@ pop00 <- get_sidra(
 )
 
 pop22 <- pop22 |>
-  janitor::clean_names() |>
+  clean_names() |>
   as_tibble() |>
   select(
     code_state = unidade_da_federacao_codigo,
@@ -70,7 +85,7 @@ pop22 <- pop22 |>
   mutate(code_state = as.numeric(code_state))
 
 pop00 <- pop00 |>
-  janitor::clean_names() |>
+  clean_names() |>
   as_tibble() |>
   select(
     code_state = unidade_da_federacao_codigo,
@@ -100,7 +115,7 @@ wide_dat <- dat |>
     year = as.numeric(year),
     ratio_car = cars / pop,
     ratio_vehicles = total / pop) |>
-  tidyr::pivot_wider(
+  pivot_wider(
     id_cols = c("code_state", "abbrev_state"),
     names_from = "year",
     values_from = c("ratio_car", "cars")
@@ -109,35 +124,36 @@ wide_dat <- dat |>
     ratio = ratio_car_2025 / ratio_car_2000
   )
 
-library(ggplot2)
-library(ggrepel)
+# Exploratory scatter checks (not run)
+# ggplot(wide_dat, aes(x = log(cars_2000), ratio)) +
+#   geom_point() +
+#   ggrepel::geom_text_repel(aes(label = abbrev_state)) +
+#   geom_vline(xintercept = 0) +
+#   geom_hline(yintercept = 0) +
+#   geom_abline(slope = 1)
+#
+# ggplot(wide_dat, aes(x = ratio_car_2000, ratio_car_2025)) +
+#   geom_point() +
+#   ggrepel::geom_text_repel(aes(label = abbrev_state)) +
+#   geom_vline(xintercept = 0) +
+#   geom_hline(yintercept = 0) +
+#   geom_abline(slope = 1)
 
-ggplot(wide_dat, aes(x = log(cars_2000), ratio)) +
-  geom_point() +
-  geom_text_repel(aes(label = abbrev_state)) +
-  geom_vline(xintercept = 0) +
-  geom_hline(yintercept = 0) +
-  geom_abline(slope = 1)
-
-ggplot(wide_dat, aes(x = ratio_car_2000, ratio_car_2025)) +
-  geom_point() +
-  geom_text_repel(aes(label = abbrev_state)) +
-  geom_vline(xintercept = 0) +
-  geom_hline(yintercept = 0) +
-  geom_abline(slope = 1)
+# Plot --------------------------------------------------------------------
 
 dat <- dat |>
   mutate(ratio_car = cars / pop * 1000)
 
-cars_br <- dat |>
-  summarise(
-    total_cars = sum(cars),
-    total_pop = sum(pop),
-    .by = "year"
-  ) |>
-  mutate(
-    ratio_car = total_cars / total_pop * 1000,
-    code_state = 1)
+# Brazil-wide aggregate (computed but unused, not run)
+# cars_br <- dat |>
+#   summarise(
+#     total_cars = sum(cars),
+#     total_pop = sum(pop),
+#     .by = "year"
+#   ) |>
+#   mutate(
+#     ratio_car = total_cars / total_pop * 1000,
+#     code_state = 1)
 
 highlight_uf <- c(21, 35, 29, 53, 51, 31, 41)
 
@@ -176,7 +192,7 @@ plot_line <- ggplot(dat, aes(x = year, y = ratio_car, group = code_state)) +
     nudge_y = c(0, 0, 0, 10, -10, 0, 0)
   ) +
   scale_x_continuous(breaks = c(2000, 2010, 2025)) +
-  scale_color_manual(values = MetBrewer::met.brewer("Hokusai1")) +
+  scale_color_manual(values = met.brewer("Hokusai1")) +
   guides(color = "none") +
   labs(
     x = NULL,
@@ -195,4 +211,6 @@ plot_line <- ggplot(dat, aes(x = year, y = ratio_car, group = code_state)) +
     axis.text = element_text(size = 12)
   )
 
-ggsave(here("plots/2_slope.png"), plot_line, width = 8, height = 8/1.618)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/02_slope.png"), plot_line, width = 8, height = 8 / 1.618)

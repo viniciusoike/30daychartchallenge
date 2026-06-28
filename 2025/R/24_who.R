@@ -1,29 +1,40 @@
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(ragg)
-library(stringr)
-library(patchwork)
-library(ggtext)
+# Prompt: Time series — WHO
+# Road-traffic deaths over time for six countries, with ARIMA-forecast 2022.
+# Source: WHO Mortality Database.
 
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+import::from(tidyr, nest, unnest)
 import::from(forecast, auto.arima, forecast)
 import::from(zoo, as.Date.ts, coredata)
+import::from(purrr, map)
+import::from(lubridate, year)
+import::from(readr, read_csv)
+import::from(janitor, clean_names)
+import::from(stringr, str_remove)
+import::from(scales, label_number)
+import::from(ggtext, geom_richtext)
+import::from(ragg, agg_png)
 import::from(here, here)
 
-who <- readr::read_csv(
+# Data --------------------------------------------------------------------
+
+who <- read_csv(
   here("data/day_24/WHOMortalityDatabaseRoad traffic accidents.csv"),
   skip = 6
 )
 
-who <- who %>%
-  janitor::clean_names() |>
+who <- who |>
+  clean_names() |>
   rename(
     death_rate = death_rate_per_100_000_population,
     death_rate_adj = age_standardized_death_rate_per_100_000_standard_population,
     pct_deaths = percentage_of_cause_specific_deaths_out_of_total_deaths
-  ) %>%
+  ) |>
   mutate(
-    death_rate = as.numeric(stringr::str_remove(death_rate, ","))
+    death_rate = as.numeric(str_remove(death_rate, ","))
   )
 
 # Forecast traffic deaths in 2022 to make a fair comparison
@@ -47,9 +58,9 @@ df_to_ts <- function(df) {
 }
 # Helper function to convert time series to tibble
 ts_to_df <- function(ts) {
-  dplyr::tibble(
-    date = zoo::as.Date.ts(stats::time(ts)),
-    series = zoo::coredata(ts)
+  tibble(
+    date = as.Date.ts(stats::time(ts)),
+    series = coredata(ts)
   )
 }
 
@@ -57,14 +68,14 @@ ts_to_df <- function(ts) {
 fcast_arima <- function(dat) {
   ts <- df_to_ts(dat)
 
-  model <- forecast::auto.arima(ts)
-  fcast <- forecast::forecast(model, h = 5)
+  model <- auto.arima(ts)
+  fcast <- forecast(model, h = 5)
 
   fcast_series <- ts_to_df(fcast$mean)
 
   original_series <- ts_to_df(ts)
 
-  out <- dplyr::bind_rows(
+  out <- bind_rows(
     list("original" = original_series, "predicted" = fcast_series),
     .id = "type"
   )
@@ -76,14 +87,14 @@ fcast_who <- who_series |>
   group_by(country_code) |>
   nest() |>
   mutate(
-    arima_fcast = purrr::map(data, fcast_arima)
+    arima_fcast = map(data, fcast_arima)
   )
 
 # The US accounts for around 18.5% off all traffic deaths
 fcast_2022 <- fcast_who |>
   unnest(cols = "arima_fcast") |>
   ungroup() |>
-  mutate(year = lubridate::year(date)) |>
+  mutate(year = year(date)) |>
   filter(year == 2022) |>
   mutate(share = series / sum(series) * 100) |>
   arrange(desc(share))
@@ -112,32 +123,24 @@ subdat <- who |>
     country_code %in% sel_countries
   )
 
-death_age <- subdat |>
-  filter(age_group != "[All]", year >= 1980) |>
-  mutate(
-    age_min = if_else(
-      age_group == "[0]",
-      0,
-      as.numeric(str_extract(age_group, "(?<=\\[)[0-9]{1,2}"))
-    ),
-    age_max = age_min + 4,
-    age_label = str_c(age_min, " a ", age_max, " anos"),
-    age_label = factor(age_label),
-    age_label = forcats::fct_reorder(age_label, age_min)
-  ) |>
-  select(
-    region_code,
-    region_name,
-    country_code,
-    country_name,
-    year,
-    age_min,
-    age_max,
-    age_label,
-    number,
-    pct_deaths,
-    death_rate
-  )
+# Deaths by age group (built but unused in the final plot, not run)
+# death_age <- subdat |>
+#   filter(age_group != "[All]", year >= 1980) |>
+#   mutate(
+#     age_min = if_else(
+#       age_group == "[0]",
+#       0,
+#       as.numeric(stringr::str_extract(age_group, "(?<=\\[)[0-9]{1,2}"))
+#     ),
+#     age_max = age_min + 4,
+#     age_label = stringr::str_c(age_min, " a ", age_max, " anos"),
+#     age_label = factor(age_label),
+#     age_label = forcats::fct_reorder(age_label, age_min)
+#   ) |>
+#   select(
+#     region_code, region_name, country_code, country_name, year,
+#     age_min, age_max, age_label, number, pct_deaths, death_rate
+#   )
 
 # Get all deaths and use loess to get trend
 total_trend <- subdat |>
@@ -147,7 +150,7 @@ total_trend <- subdat |>
     country_name = if_else(country_code == "USA", "USA", country_name),
     year = as.numeric(year),
     trend_loess = loess(number ~ year, span = 0.65)$fitted,
-    trend = stats::smooth.spline(year, number, spar = 1)$y,
+    trend = smooth.spline(year, number, spar = 1)$y,
     .by = "country_code"
   )
 
@@ -193,7 +196,7 @@ base_plot <- ggplot(total_trend, aes(year, trend_loess, color = country_name)) +
   ) +
   geom_line(linewidth = 0.9) +
   geom_label(
-    data = dplyr::filter(total_trend, year == max(year), .by = "country_name"),
+    data = filter(total_trend, year == max(year), .by = "country_name"),
     aes(label = country_name),
     family = font_text,
     size = 3.5,
@@ -217,7 +220,7 @@ base_plot <- ggplot(total_trend, aes(year, trend_loess, color = country_name)) +
   ) +
   scale_y_continuous(
     breaks = seq(0, 50000, 10000),
-    labels = scales::label_number(big.mark = "."),
+    labels = label_number(big.mark = "."),
     expand = expansion(mult = c(0, 0.05))
   ) +
   scale_color_manual(values = pal_colors) +
@@ -278,4 +281,6 @@ final_plot <- annotated_plot &
       plot.margin = margin(5, 10, 5, 10)
     )
 
-ggsave(here("plots/24_who.png"), final_plot, width = 8, height = 5.5)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/24_who.png"), final_plot, width = 8, height = 5.5, device = agg_png)

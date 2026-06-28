@@ -1,7 +1,15 @@
-library(astsa)
+# Prompt: Distributions — Stripes
+# Warming stripes of global temperature anomaly. Source: astsa::gtemp_both.
+
 library(ggplot2)
-library(dplyr)
-library(ragg)
+
+import::from(astsa, gtemp_both)
+import::from(tibble, tibble)
+import::from(RColorBrewer, brewer.pal)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 # Converte o objeto para data.frame
 temperature <- tibble(
@@ -10,8 +18,8 @@ temperature <- tibble(
 )
 
 # Paleta de cores
-blues <- RColorBrewer::brewer.pal(9, "Blues")[4:9]
-reds <- RColorBrewer::brewer.pal(9, "Reds")[4:9]
+blues <- brewer.pal(9, "Blues")[4:9]
+reds <- brewer.pal(9, "Reds")[4:9]
 
 palette <- c(rev(blues), reds)
 
@@ -21,6 +29,8 @@ df_aux_anos <- tibble(
   label = seq(1860, 2020, 40),
   x = c(1865, 1900, 1940, 1980, 2010)
 )
+
+# Plot --------------------------------------------------------------------
 
 p <- ggplot() +
   geom_tile(data = temperature, aes(x = year, y = 0, fill = temp)) +
@@ -50,4 +60,6 @@ p <- ggplot() +
     plot.margin = margin(c(0, 0, 0, 0))
   )
 
-ggsave(here::here("plots/11_stripes.png"), p, width = 6, height = 8)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/11_stripes.png"), p, width = 6, height = 8, device = agg_png)
