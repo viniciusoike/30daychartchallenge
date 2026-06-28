@@ -1,11 +1,16 @@
-library(maddison)
+# Prompt: Comparisons — Mosaic
+# A century of year-on-year GDP per capita change. Source: Maddison Project.
+
 library(dplyr)
 library(ggplot2)
-library(MetBrewer)
 
-dat <- maddison::maddison
+import::from(maddison, maddison)
+import::from(MetBrewer, met.brewer)
+import::from(here, here)
 
-max(dat$year)
+# Data --------------------------------------------------------------------
+
+dat <- maddison
 
 subdat <- dat |>
   filter(year >= 1920) |>
@@ -31,16 +36,16 @@ subdat <- subdat |>
     )
   )
 
-# Manual check of countries
-subdat |>
-  filter(year == max(year)) |>
-  arrange(desc(gdp)) |>
-  mutate(
-    acumgdp = cumsum(gdp),
-    share = acumgdp / sum(gdp),
-    rank = rank(-gdp)
-  ) |>
-  filter(share > 0.95)
+# Manual check of countries (exploratory, not run)
+# subdat |>
+#   filter(year == max(year)) |>
+#   arrange(desc(gdp)) |>
+#   mutate(
+#     acumgdp = cumsum(gdp),
+#     share = acumgdp / sum(gdp),
+#     rank = rank(-gdp)
+#   ) |>
+#   filter(share > 0.95)
 
 top_economies <- subdat |>
   filter(year == max(year)) |>
@@ -72,6 +77,8 @@ noise_x <- rnorm(n, 0.75, 0.075)
 colors_na <- paste0("gray", sample(50:70, size = n_na, replace = TRUE))
 
 offwhite <- "#f8fbf8"
+
+# Plot --------------------------------------------------------------------
 
 mosaic <- ggplot(dat_mosaic, aes(year, countrycode)) +
   geom_tile(
@@ -137,8 +144,10 @@ mosaic <- ggplot(dat_mosaic, aes(year, countrycode)) +
     text = element_text(size = 11, color = "gray20", family = "Georgia")
   )
 
+# Save --------------------------------------------------------------------
+
 ggsave(
-  here::here("2026", "plots", "03_mosaic.png"),
+  here("2026", "plots", "03_mosaic.png"),
   mosaic,
   width = 10,
   height = 8,

@@ -1,21 +1,33 @@
+# Prompt: Distributions — Diverging
+# Illiteracy-rate map + literacy gender-gap densities (Northeast vs rest).
+# Source: IBGE 2022 Census (SIDRA table 9543).
+
 library(sf)
 library(dplyr)
-library(tidyr)
 library(ggplot2)
-library(ggtext)
-library(ragg)
 library(patchwork)
+
+import::from(sidrar, get_sidra)
+import::from(geobr, read_municipality)
+import::from(janitor, clean_names)
+import::from(tibble, tibble, as_tibble)
+import::from(tidyr, pivot_wider)
+import::from(ggtext, element_textbox_simple, geom_textbox)
+import::from(BAMMtools, getJenksBreaks)
+import::from(ggthemes, theme_map)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 offwhite <- "#FFFAF0"
 
-import::from(sidrar, get_sidra)
-
-muni <- geobr::read_municipality(year = 2020, showProgress = FALSE)
-dim_muni <- as_tibble(sf::st_drop_geometry(muni))
+muni <- read_municipality(year = 2020, showProgress = FALSE)
+dim_muni <- as_tibble(st_drop_geometry(muni))
 analf <- get_sidra(9543, geo = "City", classific = "c2")
 
 tbl_gender <- analf |>
-  janitor::clean_names() |>
+  clean_names() |>
   as_tibble() |>
   filter(sexo != "Total") |>
   select(code_muni = municipio_codigo, sex = sexo, rate = valor) |>
@@ -35,7 +47,7 @@ analf_gender <- analf_gender |>
   )
 
 tbl_analf <- analf |>
-  janitor::clean_names() |>
+  clean_names() |>
   as_tibble() |>
   filter(sexo == "Total") |>
   select(code_muni = municipio_codigo, rate = valor) |>
@@ -46,13 +58,15 @@ analf_city <- left_join(muni, tbl_analf, by = "code_muni")
 analf_city <- analf_city |>
   mutate(analf_rate = 100 - rate)
 
-breaks_jenks <- BAMMtools::getJenksBreaks(analf_city$analf_rate, k = 9)[-1]
+breaks_jenks <- getJenksBreaks(analf_city$analf_rate, k = 9)[-1]
 breaks_jenks <- ceiling(breaks_jenks)
 
 labels <- c("<5%", "5-8%", "8-11%", "11-15%", "15-19%", "19-23%", "23-27%", "27-37%")
 
 analf_city <- analf_city |>
   mutate(analf_group = factor(findInterval(analf_rate, breaks_jenks, left.open = TRUE)))
+
+# Plot --------------------------------------------------------------------
 
 p1 <- ggplot(analf_city) +
   geom_sf(aes(fill = analf_group), lwd = 0.04, color = "gray90") +
@@ -73,7 +87,7 @@ p1 <- ggplot(analf_city) +
     subtitle = "Illiteracy rate, people aged 15 and over, by municipality."
   ) +
   coord_sf(xlim = c(NA, -35)) +
-  ggthemes::theme_map(base_family = "Gill Sans") +
+  theme_map(base_family = "Gill Sans") +
   theme(
     plot.background = element_rect(fill = offwhite, color = offwhite),
     panel.background = element_rect(fill = offwhite, color = offwhite),
@@ -140,9 +154,9 @@ p2 <- ggplot() +
     )
   )
 
-label_1 <- "Em 97,4% das cidades do <b><span style='color:#8c510a'>Nordeste</span></b>, as pessoas do <i>sexo feminino têm taxas de alfabetização menores</i>. Em alguns casos, a diferença supera 10 pontos percentuais."
-
-label_2 <- "Na maior parte das cidades do <b><span style='color:#01665e'>Brasil</span></b>, não há diferença grande na taxa de alfabetização entre pessoas do sexo masculino e do sexo feminino."
+# Portuguese labels (superseded by the English versions below, not run)
+# label_1 <- "Em 97,4% das cidades do <b><span style='color:#8c510a'>Nordeste</span></b>, as pessoas do <i>sexo feminino têm taxas de alfabetização menores</i>. Em alguns casos, a diferença supera 10 pontos percentuais."
+# label_2 <- "Na maior parte das cidades do <b><span style='color:#01665e'>Brasil</span></b>, não há diferença grande na taxa de alfabetização entre pessoas do sexo masculino e do sexo feminino."
 
 label_1 <- "In 97.4% of cities in the <b><span style='color:#8c510a'>Northeast</span></b>, <i>females have lower literacy rates</i>. In some cases, the gap exceeds 10 percentage points."
 
@@ -194,11 +208,20 @@ p3 <- ggplot() +
     )
   )
 
+# Save --------------------------------------------------------------------
+
 panel <- p1 | (p2 / p3)
 panel <- panel + plot_layout(widths = c(0.55, 0.45))
 
-ggsave(here::here("plots/9_diverging.png"), panel, width = 13.5, height = 10)
+ggsave(
+  here("2025/plots/09_diverging.png"),
+  panel,
+  width = 13.5,
+  height = 10,
+  device = agg_png
+)
 
-ggsave(here::here("plots/9_diverging_map.png"), p1, width = 8, height = 6)
-cowplot::save_plot(here::here("plots/9_diverging_hist_1.png"), p2, base_width = 5, base_height = 4)
-cowplot::save_plot(here::here("plots/9_diverging_hist_2.png"), p3, base_width = 5, base_height = 4)
+# Supplementary single-panel exports (not run)
+# ggsave(here("2025/plots/09_diverging_map.png"), p1, width = 8, height = 6)
+# cowplot::save_plot(here("2025/plots/09_diverging_hist_1.png"), p2, base_width = 5, base_height = 4)
+# cowplot::save_plot(here("2025/plots/09_diverging_hist_2.png"), p3, base_width = 5, base_height = 4)

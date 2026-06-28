@@ -1,7 +1,21 @@
-library(rvest)
+# Prompt: Uncertainties — Extraterrestrial
+# US box-office of films featuring extraterrestrials, inflation-adjusted to 2019.
+# Sources: Wikipedia, Box Office Mojo, FRED (US CPI).
+
 library(dplyr)
-library(purrr)
-library(tidyverse)
+library(ggplot2)
+
+import::from(rvest, read_html, html_table)
+import::from(purrr, safely, map, pluck)
+import::from(stringr, str_glue, str_extract, str_extract_all, str_replace_all, str_wrap)
+import::from(janitor, clean_names)
+import::from(fedmatch, merge_plus)
+import::from(readr, read_csv, write_csv)
+import::from(tibble, tribble, tibble)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 url <- "https://en.wikipedia.org/wiki/List_of_films_featuring_extraterrestrials"
 wikipage <- read_html(url)
@@ -20,8 +34,8 @@ url_mojo <- str_glue("https://www.boxofficemojo.com/year/{y}/?ref_=bo_yl_table_2
 
 extract_table <- function(url) {
 
-  parsed <- rvest::read_html(url)
-  tbl <- rvest::html_table(parsed)
+  parsed <- read_html(url)
+  tbl <- html_table(parsed)
   tbl <- tbl[[1]]
 
   return(tbl)
@@ -29,20 +43,20 @@ extract_table <- function(url) {
 }
 
 extract_number <- Vectorize(function(x) {
-  y <- paste(unlist(stringr::str_extract_all(x, "\\d+")), collapse = "")
+  y <- paste(unlist(str_extract_all(x, "\\d+")), collapse = "")
   return(as.numeric(y))
 })
 
 clean_table <- function(.dat) {
   .dat |>
-    janitor::clean_names() |>
-    dplyr::mutate(dplyr::across(c(budget, gross, theaters, total_gross), extract_number))
+    clean_names() |>
+    mutate(across(c(budget, gross, theaters, total_gross), extract_number))
 }
 
 # Wrapper function to import boxoffice information for a given url/year
 get_boxoffice <- function(url) {
 
-  year <- stringr::str_extract(url, "(?<=year/)[0-9]{4}")
+  year <- str_extract(url, "(?<=year/)[0-9]{4}")
   tbl <- extract_table(url)
   tbl <- clean_table(tbl)
   tbl$calendar_year <- year
@@ -50,10 +64,10 @@ get_boxoffice <- function(url) {
 
 }
 # Safely get all links
-safe_get_boxoffice <- purrr::safely(get_boxoffice)
-ls_boxoffice <- purrr::map(url_mojo, safe_get_boxoffice)
-# Check failures
-any(sapply(ls_boxoffice, is.null) == TRUE)
+safe_get_boxoffice <- safely(get_boxoffice)
+ls_boxoffice <- map(url_mojo, safe_get_boxoffice)
+# Check failures (exploratory, not run)
+# any(sapply(ls_boxoffice, is.null) == TRUE)
 # Stack data together
 boxoffice <- bind_rows(map(ls_boxoffice, pluck, 1))
 
@@ -63,28 +77,25 @@ boxoffice <- boxoffice |>
     decade = calendar_year %/% 10 * 10
   )
 
-# Alien Movies ratings
-alien <- tribble(
-  ~film, ~year, ~imdb_rating, ~metacritic_rating,
-  "Alien", 1979, 8.5, 8.9,
-  "Aliens", 1986, 8.4, 8.4,
-  "Alien 3", 1992, 6.4, 5.9,
-  "Alien Resurrection", 1997, 6.2, 6.2,
-  "Prometheus", 2012, 7.0, 6.4,
-  "Alien: Covenant", 2017, 6.4, 6.5,
-  "Alien: Romulus", 2024, 7.1, 6.4,
-  "Alien vs Predator", 2004, 5.7, 2.9,
-  "Alien vs Predator: Requiem", 2007, 4.6, 2.9
-)
+# Alien Movies ratings (fed the commented emoGG plot below; unused, not run)
+# alien <- tribble(
+#   ~film, ~year, ~imdb_rating, ~metacritic_rating,
+#   "Alien", 1979, 8.5, 8.9,
+#   "Aliens", 1986, 8.4, 8.4,
+#   "Alien 3", 1992, 6.4, 5.9,
+#   "Alien Resurrection", 1997, 6.2, 6.2,
+#   "Prometheus", 2012, 7.0, 6.4,
+#   "Alien: Covenant", 2017, 6.4, 6.5,
+#   "Alien: Romulus", 2024, 7.1, 6.4,
+#   "Alien vs Predator", 2004, 5.7, 2.9,
+#   "Alien vs Predator: Requiem", 2007, 4.6, 2.9
+# ) |>
+#   mutate(
+#     film = fct_reorder(factor(film), metacritic_rating),
+#     pos_text = max(c(imdb_rating, metacritic_rating)) + 0.25,
+#     .by = "film"
+#   )
 
-alien <- alien |>
-  mutate(film = factor(film), film = forcats::fct_reorder(film, metacritic_rating))
-
-alien <- alien |>
-  mutate(
-    pos_text = max(c(imdb_rating, metacritic_rating)) + 0.25,
-    .by = "film"
-  )
 # library(emoGG)
 #
 # emoji_search("film")
@@ -152,9 +163,7 @@ sub_boxoffice <- boxoffice |>
 #     key = paste(year, name_movie)
 #     )
 
-library(fedmatch)
-
-fmerge <- fedmatch::merge_plus(
+fmerge <- merge_plus(
   sub_movies,
   sub_boxoffice,
   by = "key",
@@ -165,7 +174,7 @@ fmerge <- fedmatch::merge_plus(
 
 sub <- fmerge$matches
 
-cpi <- read_csv("data/day_29/us_cpi.csv")
+cpi <- read_csv(here("data/day_29/us_cpi.csv"))
 names(cpi) <- c("year", "rate")
 cpi <- bind_rows(cpi, tibble(year = 2024, rate = 2.9))
 
@@ -196,20 +205,16 @@ yearly_bo <- yearly_bo |>
   left_join(cpi_adjust, by = c("year_movie_1" = "year")) |>
   mutate(adjusted = total * inflation_factor / 1e6)
 
-write_csv(yearly_bo, "data/box_office_alien_movies.csv")
-
-# Plot elements -----------------------------------------------------------
-
+write_csv(yearly_bo, here("data/box_office_alien_movies.csv"))
 
 # Plot --------------------------------------------------------------------
 
-sub |>
-  filter(year_movie_1 %in% 1996:2005) |>
-  group_by(year_movie_1) |>
-  slice_max(total_gross, n = 12) |>
-  print(n = 50)
-
-
+# Top-grossing check (exploratory, not run)
+# sub |>
+#   filter(year_movie_1 %in% 1996:2005) |>
+#   group_by(year_movie_1) |>
+#   slice_max(total_gross, n = 12) |>
+#   print(n = 50)
 
 sel_years <- c(1982, 1986, 1993, 1996, 1997, 2002, 2009, 2017, 2019, 2024)
 
@@ -224,14 +229,9 @@ df_label <- yearly_bo |>
   left_join(df_text, by = c("year_movie_1")) |>
   select(x = year_movie_1, y = adjusted, label = name_movie_1)
 
-library(showtext)
-library(ragg)
-font_add_google("IBM Plex Mono", "IBM Plex Mono")
-# font_add_google("Fira Code", "Fira Code")
-showtext_auto()
-
+# Rendered via the ragg device (see ggsave); IBM Plex Mono must be installed
+# system-wide for systemfonts/ragg to pick it up by family name.
 font <- "IBM Plex Mono"
-# font <- "Fira Code"
 
 df_axis <- tibble(
   x = 1972,
@@ -246,9 +246,6 @@ df_segment <- df_label |>
     yend = if_else(x == 1996, y + 1000, y + 500)
   )
 
-space_background <- "#03214a"
-pal <- c("#D88F00", "#ffffff")
-pal <- c("#258073", "#ffffff")
 pal_scifi <- c("#06d0ce", "#09f6f8", "#076a6c", "#051416", "#d5dadb", "#04454a", "#098b94", "#05947c", "#fefefe", "#022123")
 space_background <- pal_scifi[10]
 color_text_label <- pal_scifi[2]
@@ -303,6 +300,7 @@ p_col <- ggplot(yearly_bo, aes(year_movie_1, adjusted)) +
     plot.title = element_text(size = 20),
     plot.margin = margin(20, 10, 5, 10)
   )
-showtext_opts(dpi = 300)
-showtext_auto()
-ggsave("plots/29_extraterrestrial.png", p_col, width = 9, height = 6)
+
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/29_extraterrestrial.png"), p_col, width = 9, height = 6, device = agg_png)

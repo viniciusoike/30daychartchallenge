@@ -1,13 +1,24 @@
-# Prompt: Comparisons
-# Part to Whole
+# Prompt: Comparisons — Part to Whole
+# Main commute mode by region (IBGE Census 2022). Source: SIDRA table 10332.
 
-import::from(sidrar, get_sidra)
-
-library(tidyverse)
+library(ggplot2)
+library(dplyr)
 library(sf)
 library(patchwork)
 
-states <- geobr::read_state(showProgress = FALSE)
+import::from(sidrar, get_sidra)
+import::from(geobr, read_state)
+import::from(janitor, clean_names)
+import::from(tibble, tibble, as_tibble)
+import::from(tidyr, expand_grid)
+import::from(stringr, str_detect, str_sub)
+import::from(forcats, fct_reorder)
+import::from(scales, number)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
+
+states <- read_state(showProgress = FALSE)
 dim_state <- as_tibble(st_drop_geometry(states))
 dim_region <- distinct(dim_state, code_region, name_region)
 
@@ -24,7 +35,7 @@ cols_select <- c(
 dat <- as_tibble(dat)
 
 tab <- dat |>
-  janitor::clean_names() |>
+  clean_names() |>
   select(all_of(cols_select)) |>
   mutate(
     code_state = as.numeric(code_state)
@@ -83,7 +94,7 @@ dim_mode <- tibble(
 )
 
 label_percent_br <- function(x) {
-  scales::number(
+  number(
     x,
     accuracy = 1,
     scale = 1,
@@ -92,6 +103,8 @@ label_percent_br <- function(x) {
     decimal.mark = ","
   )
 }
+
+# Wrangle -----------------------------------------------------------------
 
 lvls_modes <- c("Other", "Motorcycle", "Active", "Public transit", "Car")
 
@@ -212,6 +225,8 @@ tab_full_state <- tab_full_state |>
     )
   )
 
+# Plot --------------------------------------------------------------------
+
 base_text <- "Lato"
 title_text <- "Lora"
 
@@ -307,7 +322,7 @@ p_region <- ggplot(tab_region, aes(share, name_region, fill = group)) +
 region_agg <- tab_region |>
   summarise(total = sum(trips), .by = "code_region") |>
   mutate(
-    label_num = scales::number(
+    label_num = number(
       total,
       scale = 1e-6,
       suffix = "M",
@@ -384,169 +399,172 @@ panel <- p_brazil +
   ) &
   theme(legend.position = "bottom")
 
+# Save --------------------------------------------------------------------
+
 ggsave(
-  here::here("2026/plots/01_part_to_whole.png"),
+  here("2026/plots/01_part_to_whole.png"),
   panel,
   width = 9,
   height = 5,
   dpi = 400
 )
 
+# Exploratory (not run) -------------------------------------------------
 
-plot_state <- function(region) {
-  subdat <- tab_full_state |>
-    filter(code_region == !!region) |>
-    mutate(
-      label_num = case_when(
-        share > 20 ~ label_percent_br(share),
-        TRUE ~ NA_character_
-      )
-    )
+# plot_state <- function(region) {
+#   subdat <- tab_full_state |>
+#     filter(code_region == !!region) |>
+#     mutate(
+#       label_num = case_when(
+#         share > 20 ~ label_percent_br(share),
+#         TRUE ~ NA_character_
+#       )
+#     )
 
-  states_abb_order <- subdat |>
-    filter(group == "Car") |>
-    arrange(desc(share)) |>
-    pull(abbrev_state)
+#   states_abb_order <- subdat |>
+#     filter(group == "Car") |>
+#     arrange(desc(share)) |>
+#     pull(abbrev_state)
 
-  subdat <- subdat |>
-    mutate(abbrev_state = factor(abbrev_state, levels = states_abb_order))
+#   subdat <- subdat |>
+#     mutate(abbrev_state = factor(abbrev_state, levels = states_abb_order))
 
-  ggplot(
-    subdat,
-    aes(abbrev_state, share, fill = group)
-  ) +
-    geom_col(width = 0.55) +
-    geom_label(
-      aes(x = abbrev_state, y = share, label = label_num, group = group),
-      inherit.aes = FALSE,
-      position = position_stack(vjust = 0.5),
-      family = base_text,
-      size = 2.5,
-      fill = "white",
-      color = "#000000"
-    ) +
-    scale_y_continuous(
-      breaks = seq(0, 100, 25),
-      expand = expansion(c(0, 0.1)),
-      position = "right"
-    ) +
-    scale_fill_manual(values = colors_modes) +
-    labs(
-      title = NULL,
-      x = NULL,
-      y = NULL,
-      fill = NULL
-    ) +
-    theme_minimal(base_family = base_text) +
-    theme_sub_axis_x(line = element_line()) +
-    theme_sub_panel(
-      grid.minor = element_blank(),
-      grid.major.x = element_blank()
-    )
-}
+#   ggplot(
+#     subdat,
+#     aes(abbrev_state, share, fill = group)
+#   ) +
+#     geom_col(width = 0.55) +
+#     geom_label(
+#       aes(x = abbrev_state, y = share, label = label_num, group = group),
+#       inherit.aes = FALSE,
+#       position = position_stack(vjust = 0.5),
+#       family = base_text,
+#       size = 2.5,
+#       fill = "white",
+#       color = "#000000"
+#     ) +
+#     scale_y_continuous(
+#       breaks = seq(0, 100, 25),
+#       expand = expansion(c(0, 0.1)),
+#       position = "right"
+#     ) +
+#     scale_fill_manual(values = colors_modes) +
+#     labs(
+#       title = NULL,
+#       x = NULL,
+#       y = NULL,
+#       fill = NULL
+#     ) +
+#     theme_minimal(base_family = base_text) +
+#     theme_sub_axis_x(line = element_line()) +
+#     theme_sub_panel(
+#       grid.minor = element_blank(),
+#       grid.major.x = element_blank()
+#     )
+# }
 
-p_states <- map(1:5, plot_state)
+# p_states <- map(1:5, plot_state)
 
-p_brazil +
-  p_region +
-  plot_layout(widths = c(0.2, 0.8), guides = "collect") &
-  theme(legend.position = "bottom")
+# p_brazil +
+#   p_region +
+#   plot_layout(widths = c(0.2, 0.8), guides = "collect") &
+#   theme(legend.position = "bottom")
 
-library(patchwork)
-
-
-p2 +
-  (p_states[[1]] /
-    p_states[[2]] /
-    p_states[[3]] /
-    p_states[[4]] /
-    p_states[[5]]) +
-  plot_layout(guides = "collect")
+# library(patchwork)
 
 
-subdat <- tab_full_state |>
-  filter(code_region == 1)
+# p2 +
+#   (p_states[[1]] /
+#     p_states[[2]] /
+#     p_states[[3]] /
+#     p_states[[4]] /
+#     p_states[[5]]) +
+#   plot_layout(guides = "collect")
 
 
-states_abb_order <- subdat |>
-  filter(group == "Car") |>
-  arrange(desc(share)) |>
-  pull(abbrev_state)
-
-subdat <- subdat |>
-  mutate(abbrev_state = factor(abbrev_state, levels = states_abb_order))
-
-ggplot(
-  subdat,
-  aes(abbrev_state, share, fill = group)
-) +
-  geom_col(width = 0.5) +
-  scale_y_continuous(
-    breaks = seq(0, 100, 20),
-    expand = expansion(c(0, 0.05))
-  ) +
-  scale_fill_manual(values = colors_modes) +
-  labs(
-    title = "Brazil",
-    x = NULL,
-    y = NULL,
-    fill = NULL
-  ) +
-  theme_minimal(base_family = base_text) +
-  theme_sub_axis_x(line = element_line()) +
-  theme_sub_panel(
-    grid.minor = element_blank(),
-    grid.major.x = element_blank()
-  )
-
-plot_state(1)
+# subdat <- tab_full_state |>
+#   filter(code_region == 1)
 
 
-p2 <- ggplot(tab_region, aes(share, 1, fill = group)) +
-  geom_col(orientation = "y") +
-  facet_wrap(vars(code_region), ncol = 1) +
-  scale_y_continuous(expand = expansion(0.35)) +
-  scale_fill_manual(values = colors_modes) +
-  labs(
-    title = "Brazil",
-    x = NULL,
-    y = NULL,
-    fill = NULL
-  ) +
-  theme_plot
+# states_abb_order <- subdat |>
+#   filter(group == "Car") |>
+#   arrange(desc(share)) |>
+#   pull(abbrev_state)
+
+# subdat <- subdat |>
+#   mutate(abbrev_state = factor(abbrev_state, levels = states_abb_order))
+
+# ggplot(
+#   subdat,
+#   aes(abbrev_state, share, fill = group)
+# ) +
+#   geom_col(width = 0.5) +
+#   scale_y_continuous(
+#     breaks = seq(0, 100, 20),
+#     expand = expansion(c(0, 0.05))
+#   ) +
+#   scale_fill_manual(values = colors_modes) +
+#   labs(
+#     title = "Brazil",
+#     x = NULL,
+#     y = NULL,
+#     fill = NULL
+#   ) +
+#   theme_minimal(base_family = base_text) +
+#   theme_sub_axis_x(line = element_line()) +
+#   theme_sub_panel(
+#     grid.minor = element_blank(),
+#     grid.major.x = element_blank()
+#   )
+
+# plot_state(1)
 
 
-xbreaks <- unique(fake_grid$code_state)
+# p2 <- ggplot(tab_region, aes(share, 1, fill = group)) +
+#   geom_col(orientation = "y") +
+#   facet_wrap(vars(code_region), ncol = 1) +
+#   scale_y_continuous(expand = expansion(0.35)) +
+#   scale_fill_manual(values = colors_modes) +
+#   labs(
+#     title = "Brazil",
+#     x = NULL,
+#     y = NULL,
+#     fill = NULL
+#   ) +
+#   theme_plot
 
-swap_names <- c(states$abbrev_state)
-names(swap_names) <- states$code_state
-xlabels <- str_replace_all(xbreaks, swap_names)
-xlabels <- str_replace_all(xlabels, "[0-9]{2}", "")
 
-ggplot(subset(tab_full_state, code_region == 1)) +
-  geom_col()
+# xbreaks <- unique(fake_grid$code_state)
 
-p3 = ggplot(tab_full_state, aes(as.factor(code_state), share, fill = group)) +
-  geom_col() +
-  facet_wrap(vars(code_region), ncol = 1, scales = "free") +
-  scale_x_discrete(labels = xlabels) +
-  scale_fill_manual(values = colors_modes) +
-  theme_minimal() +
-  theme_sub_panel(
-    grid.minor = element_blank(),
-    grid.major = element_blank()
-  ) +
-  theme_sub_axis(
-    title = element_blank()
-  )
+# swap_names <- c(states$abbrev_state)
+# names(swap_names) <- states$code_state
+# xlabels <- str_replace_all(xbreaks, swap_names)
+# xlabels <- str_replace_all(xlabels, "[0-9]{2}", "")
 
-library(patchwork)
+# ggplot(subset(tab_full_state, code_region == 1)) +
+#   geom_col()
 
-panel <- p1 | p2 | p3
+# p3 = ggplot(tab_full_state, aes(as.factor(code_state), share, fill = group)) +
+#   geom_col() +
+#   facet_wrap(vars(code_region), ncol = 1, scales = "free") +
+#   scale_x_discrete(labels = xlabels) +
+#   scale_fill_manual(values = colors_modes) +
+#   theme_minimal() +
+#   theme_sub_panel(
+#     grid.minor = element_blank(),
+#     grid.major = element_blank()
+#   ) +
+#   theme_sub_axis(
+#     title = element_blank()
+#   )
 
-(p1 | p2 | p3) +
-  plot_layout(guides = "collect") &
-  theme(legend.position = "bottom")
+# library(patchwork)
+
+# panel <- p1 | p2 | p3
+
+# (p1 | p2 | p3) +
+#   plot_layout(guides = "collect") &
+#   theme(legend.position = "bottom")
 
 
 # tab_grouped_educ <- tab |>
@@ -622,36 +640,36 @@ panel <- p1 | p2 | p3
 #   geom_label(stat = "stratum", aes(label = after_stat(stratum))) +
 #   theme_minimal()
 
-mode_state <- tab |>
-  filter(
-    mode != "Total",
-    race != "Total",
-    educ != "Total",
-    race %in% c("Branca", "Parda")
-  ) |>
-  left_join(dim_mode, by = "mode") |>
-  summarise(
-    n = sum(value, na.rm = TRUE),
-    .by = c("code_state", "group")
-  ) |>
-  mutate(
-    share = n / sum(n, na.rm = TRUE) * 100,
-    .by = c("code_state")
-  )
+# mode_state <- tab |>
+#   filter(
+#     mode != "Total",
+#     race != "Total",
+#     educ != "Total",
+#     race %in% c("Branca", "Parda")
+#   ) |>
+#   left_join(dim_mode, by = "mode") |>
+#   summarise(
+#     n = sum(value, na.rm = TRUE),
+#     .by = c("code_state", "group")
+#   ) |>
+#   mutate(
+#     share = n / sum(n, na.rm = TRUE) * 100,
+#     .by = c("code_state")
+#   )
 
-grouped_mode_state <- mode_state |>
-  group_by(code_state) |>
-  mutate(group_label = fct_lump_n(group, n = 3, w = share)) |>
-  group_by(code_state, group_label) |>
-  summarise(grouped_share = sum(share)) |>
-  arrange(code_state, desc(grouped_share)) |>
-  ungroup()
+# grouped_mode_state <- mode_state |>
+#   group_by(code_state) |>
+#   mutate(group_label = fct_lump_n(group, n = 3, w = share)) |>
+#   group_by(code_state, group_label) |>
+#   summarise(grouped_share = sum(share)) |>
+#   arrange(code_state, desc(grouped_share)) |>
+#   ungroup()
 
-df <- grouped_mode_state |>
-  filter(code_state == 35) |>
-  mutate(
-    group_label = fct_reorder(group_label, grouped_share)
-  )
+# df <- grouped_mode_state |>
+#   filter(code_state == 35) |>
+#   mutate(
+#     group_label = fct_reorder(group_label, grouped_share)
+#   )
 
 # ggplot(df, aes(grouped_share, 1, fill = group_label)) +
 #   geom_col(orientation = "y") +

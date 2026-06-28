@@ -1,16 +1,28 @@
+# Prompt: Distributions — data.gov
+# Median house prices in Connecticut cities, inflation-adjusted to 2022 USD.
+# Source: Real Estate Sales 2001-2022 GL (data.gov).
+
 library(dplyr)
-library(patchwork)
 library(ggplot2)
-library(ragg)
+library(patchwork)
+
 import::from(stringr, str_extract)
 import::from(readr, read_csv)
+import::from(janitor, clean_names)
+import::from(lubridate, year, month, make_date)
+import::from(MetBrewer, met.brewer)
+import::from(priceR, adjust_for_inflation)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 dat <- read_csv(
   "//Volumes/T7 Touch/bases-de-dados/real-estate/Real_Estate_Sales_2001-2022_GL.csv"
 )
 
 subdat <- dat |>
-  janitor::clean_names() |>
+  clean_names() |>
   filter(!is.na(location)) |>
   mutate(
     lng = as.numeric(str_extract(location, "(?<=-)[0-9].+(?= )")),
@@ -32,8 +44,8 @@ main_cities <- subdat |>
 
 main_cities <- c(main_cities, "Hartford")
 
-subdat |>
-  count(property_type, residential_type)
+# subdat |>
+#   count(property_type, residential_type)
 
 subdat <- subdat |>
   mutate(
@@ -53,8 +65,8 @@ subdat <- subdat |>
   filter(town %in% main_cities) |>
   mutate(
     date = as.Date(date_recorded, format = "%m/%d/%Y"),
-    year = lubridate::year(date),
-    month = lubridate::month(date)
+    year = year(date),
+    month = month(date)
   )
 
 # subdat |>
@@ -74,10 +86,10 @@ series <- subdat |>
     med = median(sale_amount),
     .by = c("year", "month", "town")
   ) |>
-  mutate(date = lubridate::make_date(year, month, 1))
+  mutate(date = make_date(year, month, 1))
 
-min(series$year)
-max(series$year)
+# min(series$year)
+# max(series$year)
 
 series <- series |>
   arrange(date) |>
@@ -85,7 +97,7 @@ series <- series |>
 
 series <- series |>
   mutate(
-    adjusted_price = priceR::adjust_for_inflation(
+    adjusted_price = adjust_for_inflation(
       med,
       from_date = date,
       to_date = as.Date("2022-01-01"),
@@ -93,9 +105,11 @@ series <- series |>
     )
   )
 
+# Plot --------------------------------------------------------------------
+
 main_year_breaks <- c(2007, seq(2010, 2020, 5), 2023)
 year_breaks <- 2007:2023
-dbreaks <- lubridate::make_date(year_breaks)
+dbreaks <- make_date(year_breaks)
 
 offwhite <- "#fefefe"
 pal_col_axis <- c(offwhite, "#000000")
@@ -103,9 +117,9 @@ col_axis_inds <- as.integer(year_breaks %in% main_year_breaks) + 1
 col_axis <- pal_col_axis[col_axis_inds]
 size_axis <- c(0, 12)[col_axis_inds]
 
-pal_colors <- MetBrewer::met.brewer("Hokusai1", n = 6)
-pal_colors[4] <- MetBrewer::met.brewer("Hokusai1", n = 24)[5]
-pal_colors[2] <- MetBrewer::met.brewer("Hokusai1", n = 24)[15]
+pal_colors <- met.brewer("Hokusai1", n = 6)
+pal_colors[4] <- met.brewer("Hokusai1", n = 24)[5]
+pal_colors[2] <- met.brewer("Hokusai1", n = 24)[15]
 
 font_text <- "DIN Alternate"
 font_title <- "Rockwell"
@@ -178,9 +192,12 @@ final_plot <- base_plot +
     theme = theme_annotation
   )
 
+# Save --------------------------------------------------------------------
+
 ggsave(
-  here::here("plots", "12_datagov.png"),
+  here("2025/plots/12_datagov.png"),
   final_plot,
   width = 7,
-  height = 5
+  height = 5,
+  device = agg_png
 )

@@ -1,15 +1,23 @@
+# Prompt: Relationships — Kinship
+# Census tracts of Porto Alegre coloured by Asian-heritage population.
+# Source: IBGE Census 2022 (tract-level race counts).
+
 library(sf)
 library(dplyr)
-library(tidyr)
 library(ggplot2)
-library(ragg)
-library(sf)
 
+import::from(readr, read_csv2, locale)
+import::from(tidyr, pivot_longer, pivot_wider)
+import::from(geobr, read_municipality, read_census_tract)
+import::from(ggthemes, theme_map)
+import::from(ragg, agg_png)
+import::from(here, here)
 
+# Data --------------------------------------------------------------------
 
-dat <- readr::read_csv2(
+dat <- read_csv2(
   '/Volumes/T7 Touch/github/tidyibge/data-raw/censo_2022/Agregados_por_setores_cor_ou_raca_BR.csv',
-  locale = readr::locale(decimal_mark = ","),
+  locale = locale(decimal_mark = ","),
   na = "X"
 )
 
@@ -47,24 +55,22 @@ code_cities <- c(code_cities, 4314902, 4310801)
 
 sub_race <- filter(pop_race, code_muni %in% code_cities)
 
-pop_total_city <- pop_total_city %>%
-  pivot_longer(cols = pop_branca:pop_indigena) %>%
-  mutate(share = value / sum(value) * 100, .by = "code_muni")
-
-code_city <- 4314902
-
-sub_city <- subset(pop_total_city, code_muni == code_city)
+# City-level race shares (exploratory, not run)
+# pop_total_city <- pop_total_city %>%
+#   pivot_longer(cols = pop_branca:pop_indigena) %>%
+#   mutate(share = value / sum(value) * 100, .by = "code_muni")
+# sub_city <- subset(pop_total_city, code_muni == 4314902)
 
 sub_race <- sub_race |>
-  tidyr::pivot_longer(cols = pop_branca:pop_indigena) |>
+  pivot_longer(cols = pop_branca:pop_indigena) |>
   mutate(prop = value / sum(value, na.rm = TRUE) * 100, .by = "code_tract") |>
-  tidyr::pivot_wider(
+  pivot_wider(
     id_cols = c("code_tract", "code_muni"),
     names_from = "name",
     values_from = c("value", "prop")
     )
 
-# borders <- lapply(code_cities, geobr::read_municipality, year = 2022, showProgress = FALSE)
+# borders <- lapply(code_cities, read_municipality, year = 2022, showProgress = FALSE)
 # tracts <- lapply(code_cities, geobr::read_census_tract, year = 2022, showProgress = FALSE)
 #
 # dim_muni <- borders |>
@@ -79,9 +85,6 @@ sub_race <- sub_race |>
 # names(tracts) <- name_city
 #
 # shp <- tracts$sao_paulo
-
-font <- "Futura"
-offwhite <- "#fefefe"
 
 # city <- name_city[[7]]
 # code_city <- dplyr::filter(dim_muni, name_simplified == city)$code_muni
@@ -110,6 +113,16 @@ offwhite <- "#fefefe"
 #     group_pop = get_jenks_breaks(value_pop_amarela)
 #   )
 
+# Census tracts for Porto Alegre joined with race counts.
+# (Reconstructed from the commented exploration above, which left `shp`
+# undefined in the live script.)
+ct <- read_census_tract(4314902, year = 2022, showProgress = FALSE)
+shp <- left_join(ct, filter(sub_race, code_muni == 4314902), by = "code_tract")
+shp <- shp |>
+  mutate(across(starts_with("value"), \(x) ifelse(is.na(x), 0, x)))
+
+# Plot --------------------------------------------------------------------
+
 breaks <- c(0, 1, 3, 5, 10, 17)
 
 race_tract <- shp %>%
@@ -123,10 +136,11 @@ race_tract <- shp %>%
 # dir.create(here("data/day_14"))
 # st_write(race_tract, here("data/day_14/poa.geojson"))
 
-poa_pop <- pop_total_city %>%
-  filter(code_muni == 4314902) %>%
-  mutate(is_amarelo = if_else(name == "pop_amarela", 1L, 0L)) %>%
-  summarise(total = sum(value), .by = "is_amarelo")
+# Asian-population count for the subtitle (exploratory, not run)
+# poa_pop <- pop_total_city %>%
+#   filter(code_muni == 4314902) %>%
+#   mutate(is_amarelo = if_else(name == "pop_amarela", 1L, 0L)) %>%
+#   summarise(total = sum(value), .by = "is_amarelo")
 
 font_text <- "DIN Alternate"
 font_title <- "Charter"
@@ -136,7 +150,7 @@ pt <- c(-30.023465, -51.17843)
 mark <- st_as_sf(st_sfc(st_point(rev(pt))), crs = 4326)
 buffer_circle <- st_buffer(mark, 150)
 
-border <- geobr::read_municipality(4314902, simplified = FALSE, showProgress = FALSE)
+border <- read_municipality(4314902, simplified = FALSE, showProgress = FALSE)
 
 plot_map <- ggplot() +
   geom_sf(data = border, lwd = 0.8, color = "gray50", fill = "gray80") +
@@ -159,7 +173,7 @@ plot_map <- ggplot() +
     # xlim = c(-51.265, -51.11),
     xlim = c(-51.265, -51.09),
     ylim = c(-30.15, -29.95)) +
-  ggthemes::theme_map(base_family = font_text) +
+  theme_map(base_family = font_text) +
   labs(
     title = "Not many asians at all",
     subtitle = "Porto Alegre, Brazil\nPopulation 1,33 million - 1.373 residents of Asian heritage (0,1%).",
@@ -175,10 +189,13 @@ plot_map <- ggplot() +
     plot.margin = margin(15, 10, 15, 10),
   )
 
+# Save --------------------------------------------------------------------
+
 ggsave(
-  here::here("plots/14_kinship.png"),
+  here("2025/plots/14_kinship.png"),
   plot_map,
   width = 7,
-  height = 9
+  height = 9,
+  device = agg_png
 )
 

@@ -1,17 +1,26 @@
+# Prompt: Time series — Log scale
+# GDP of selected countries on linear vs log scale, 1940-2023.
+# Source: Maddison Project (2024).
+
 library(ggplot2)
 library(dplyr)
 library(patchwork)
+
 import::from(readxl, read_excel)
+import::from(tibble, tibble)
+import::from(MetBrewer, met.brewer)
+import::from(ragg, agg_png)
+import::from(here, here)
 
 # Data --------------------------------------------------------------------
 
-dat <- read_excel("data/day_8/mpd2023_web.xlsx", sheet = 5)
+dat <- read_excel(here("data/day_8/mpd2023_web.xlsx"), sheet = 5)
 
-countries <- c(
-  "BRA", "CAN", "MEX", "USA",
-  "AUS", "CHN", "IND", "JPN",
-  "FRA", "DEU", "POL", "GBR"
-  )
+# countries <- c(
+#   "BRA", "CAN", "MEX", "USA",
+#   "AUS", "CHN", "IND", "JPN",
+#   "FRA", "DEU", "POL", "GBR"
+#   )
 
 countries <- c(
   "BRA", "USA",
@@ -59,10 +68,10 @@ subdat <- dat |>
 
 # Plot elements -----------------------------------------------------------
 
-pal_qual <- MetBrewer::met.brewer("Hokusai1", 24)
-pal_blues <- MetBrewer::met.brewer("Hokusai2", 12)
+pal_qual <- met.brewer("Hokusai1", 24)
+pal_blues <- met.brewer("Hokusai2", 12)
 
-inds <- c(2, 5, 8, 14, 30, 33, 36, 39, 40, 42, 44, 48)
+# inds <- c(2, 5, 8, 14, 30, 33, 36, 39, 40, 42, 44, 48)
 inds <- c(4, 8, 10, 14, 20, 22)
 cores <- c(pal_blues[inds[1:2]], pal_qual[inds[3:6]])
 font <- "Avenir"
@@ -197,5 +206,6 @@ panel <- panel + plot_annotation(
     plot.caption = element_text(size = 12, family = font, color = "gray40")
   )
 
-# Export
-ggsave("plots/23_log_scale.png", panel, width = 13.5, height = 6.4)
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/23_log_scale.png"), panel, width = 13.5, height = 6.4, device = agg_png)

@@ -1,6 +1,14 @@
-library(sidrar)
+# Prompt: Comparisons — Pictogram (draft, unfinished)
+# Household ownership and type distribution (IBGE Census). SIDRA table 9933.
+
 library(dplyr)
+
+import::from(sidrar, get_sidra)
+import::from(janitor, clean_names)
+import::from(tibble, as_tibble)
 import::from(stringr, str_detect)
+
+# Data --------------------------------------------------------------------
 
 dat <- get_sidra(
   api = "/t/9933/n1/all/n3/all/v/allxp/p/all/c1975/73086/c63/allxt/c125/allxt"
@@ -8,7 +16,7 @@ dat <- get_sidra(
 
 dat <- dat |>
   as_tibble() |>
-  janitor::clean_names()
+  clean_names()
 
 clean_dat <- dat |>
   mutate(

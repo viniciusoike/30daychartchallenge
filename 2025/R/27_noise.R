@@ -1,6 +1,15 @@
+# Prompt: Uncertainties — Noise
+# Diagnostic panel of Gaussian white noise (line, histogram, lag, QQ, ACF, square).
+
 library(dplyr)
 library(ggplot2)
 library(patchwork)
+
+import::from(tibble, tibble)
+import::from(ragg, agg_png)
+import::from(here, here)
+
+# Data --------------------------------------------------------------------
 
 N <- 2500
 
@@ -8,6 +17,8 @@ dat <- tibble(
   y = rnorm(N),
   x = seq_along(y)
 )
+
+# Plot --------------------------------------------------------------------
 
 colors <- c("gray15")
 offwhite <- "#f5f5f4"
@@ -117,152 +128,157 @@ panel <- panel +
   plot_annotation(title = "No signal in this noise", subtitle = "Various plots illustrating statistical properties of Gaussian white noise: ") &
   theme_title
 
-gg
+# Save --------------------------------------------------------------------
+
+ggsave(here("2025/plots/27_noise.png"), panel, width = 7, height = 8, device = agg_png)
+
+# Exploratory (not run) ---------------------------------------------------
+# Time-series decomposition experiments (vehicle production / energy) that
+# never fed a saved chart.
+
+# cars <- rbcb::get_series(1378, as = "ts")
+
+# cars <- log(cars)
+
+# carspec <- bspec::bspec(diff(cars, 12))
+
+# expectation(bspec(cars, priorscale = 0.6, priordf = 2))
 
 
-cars <- rbcb::get_series(1378, as = "ts")
+# dat_cars <- tibble(
+#   date = zoo::as.Date.ts(time(cars)),
+#   cars = zoo::coredata(cars)
+#   )
 
-cars <- log(cars)
+# stl_cars <- forecast::mstl(cars, s.window = 27, robust = TRUE)
 
-carspec <- bspec::bspec(diff(cars, 12))
+# ts_to_tibble <- function(ts) {
 
-expectation(bspec(cars, priorscale = 0.6, priordf = 2))
+#   dplyr::tibble(
+#     date = zoo::as.Date.ts(stats::time(ts)),
+#     as.data.frame(zoo::coredata(ts)),
+#     .name_repair = janitor::make_clean_names
+#   )
 
+# }
 
-dat_cars <- tibble(
-  date = zoo::as.Date.ts(time(cars)),
-  cars = zoo::coredata(cars)
-  )
+# dat_stl <- ts_to_tibble(stl_cars)
+# dat_cars <- ts_to_tibble(cars)
 
-stl_cars <- forecast::mstl(cars, s.window = 27, robust = TRUE)
+# ggplot(dat_cars, aes(date, cars)) +
+#   geom_line()
 
-ts_to_tibble <- function(ts) {
+# ggplot(dat_stl, aes(date, trend)) +
+#   geom_line()
 
-  dplyr::tibble(
-    date = zoo::as.Date.ts(stats::time(ts)),
-    as.data.frame(zoo::coredata(ts)),
-    .name_repair = janitor::make_clean_names
-  )
+# ggplot(dat_stl, aes(date, seasonal12)) +
+#   geom_line()
 
-}
+# ggplot(dat_stl, aes(date, remainder)) +
+#   geom_line()
 
-dat_stl <- ts_to_tibble(stl_cars)
-dat_cars <- ts_to_tibble(cars)
+# forecast::autoplot(stl_cars)
 
-ggplot(dat_cars, aes(date, cars)) +
-  geom_line()
+# holt <- HoltWinters(cars, seasonal = "additive")
 
-ggplot(dat_stl, aes(date, trend)) +
-  geom_line()
+# model_cars <- forecast::tbats(cars, use.trend = TRUE)
 
-ggplot(dat_stl, aes(date, seasonal12)) +
-  geom_line()
+# tbats_cars <- forecast::tbats.components(model_cars)
 
-ggplot(dat_stl, aes(date, remainder)) +
-  geom_line()
+# dat_tbats <- tibble(
+#   date = zoo::as.Date.ts(time(tbats_cars)),
+#   as.data.frame(zoo::coredata(tbats_cars))
+# )
 
-forecast::autoplot(stl_cars)
+# forecast::autoplot(tbats_cars)
 
-holt <- HoltWinters(cars, seasonal = "additive")
+# dat_hw <- as_tibble(as.data.frame(holt$fitted))
 
-model_cars <- forecast::tbats(cars, use.trend = TRUE)
+# dat_holt <- tibble(
+#   date = zoo::as.Date.ts(time(holt$fitted)),
+#   as.data.frame(zoo::coredata(holt$fitted))
+# )
 
-tbats_cars <- forecast::tbats.components(model_cars)
+# dat <- inner_join(dat_cars, dat_holt)
 
-dat_tbats <- tibble(
-  date = zoo::as.Date.ts(time(tbats_cars)),
-  as.data.frame(zoo::coredata(tbats_cars))
-)
+# ggplot(dat, aes(date, cars)) +
+#   geom_line(linewidth = 0.8, color = "#114787")
 
-forecast::autoplot(tbats_cars)
+# ggplot(dat, aes(date, level)) +
+#   geom_line(linewidth = 0.6, color = "black")
 
-dat_hw <- as_tibble(as.data.frame(holt$fitted))
+# ggplot(dat, aes(date, season)) +
+#   geom_line(linewidth = 0.6)
 
-dat_holt <- tibble(
-  date = zoo::as.Date.ts(time(holt$fitted)),
-  as.data.frame(zoo::coredata(holt$fitted))
-)
-
-dat <- inner_join(dat_cars, dat_holt)
-
-ggplot(dat, aes(date, cars)) +
-  geom_line(linewidth = 0.8, color = "#114787")
-
-ggplot(dat, aes(date, level)) +
-  geom_line(linewidth = 0.6, color = "black")
-
-ggplot(dat, aes(date, season)) +
-  geom_line(linewidth = 0.6)
-
-ggplot(dat, aes(date, trend)) +
-  geom_line()
-
-
-
-ggplot(dat_cars, aes(x = date, y = cars)) +
-  geom_line()
-
-ggplot(dat_holt) +
-  geom_line(aes(x = date, y = level))
-
-ggplot(dat_holt) +
-  geom_line(aes(x = date, y = trend))
-
-ggplot(dat_holt) +
-  geom_line(aes(x = date, y = season))
+# ggplot(dat, aes(date, trend)) +
+#   geom_line()
 
 
 
-str(dat_holt)
+# ggplot(dat_cars, aes(x = date, y = cars)) +
+#   geom_line()
 
-names(dat_holt)
+# ggplot(dat_holt) +
+#   geom_line(aes(x = date, y = level))
 
-zoo::as.Date.ts(time(holt$fitted))
+# ggplot(dat_holt) +
+#   geom_line(aes(x = date, y = trend))
 
-dat_hw$date <- dat_cars$date
-
-
-ggplot(dat_hw, aes())
-
-dat <- as_tibble(as.data.frame(stl_cars))
-plot.ts(dat$Remainder)
-Box.test(dat$Remainder, lag = 24, fitdf = 3, type = "Ljung")
+# ggplot(dat_holt) +
+#   geom_line(aes(x = date, y = season))
 
 
 
-ggplot(stl_cars, aes())
+# str(dat_holt)
+
+# names(dat_holt)
+
+# zoo::as.Date.ts(time(holt$fitted))
+
+# dat_hw$date <- dat_cars$date
 
 
-kalman <- StructTS(cars, type = "level")
+# ggplot(dat_hw, aes())
 
-plot(cars)
-lines(tsSmooth(kalman), lty = 3, col = "red")
-lines(fitted(kalman), lty = 2)
+# dat <- as_tibble(as.data.frame(stl_cars))
+# plot.ts(dat$Remainder)
+# Box.test(dat$Remainder, lag = 24, fitdf = 3, type = "Ljung")
 
-plot(residuals(kalman))
 
-plot(kalman$fitted)
 
-plot(tsSmooth(kalman))
+# ggplot(stl_cars, aes())
 
-series <- rbcb::get_series(
-  c("cars" = 1378, "electric_energy" = 1403),
-  start_date = "1980-01-01"
-  )
 
-energy <- ts(log(series$electric_energy$electric_energy), start = c(1980, 1), frequency = 12)
+# kalman <- StructTS(cars, type = "level")
 
-forecast::ggseasonplot(energy)
+# plot(cars)
+# lines(tsSmooth(kalman), lty = 3, col = "red")
+# lines(fitted(kalman), lty = 2)
 
-plot(forecast::mstl(energy))
+# plot(residuals(kalman))
 
-ggplot(series$electric_energy, aes(date, electric_energy)) +
-  geom_line()
+# plot(kalman$fitted)
 
-ggplot(series$cars, aes(date, log(cars))) +
-  geom_line()
+# plot(tsSmooth(kalman))
 
-xcar <- ts(log(series$cars$cars), start = c(1980, 1), frequency = 12)
+# series <- rbcb::get_series(
+#   c("cars" = 1378, "electric_energy" = 1403),
+#   start_date = "1980-01-01"
+#   )
+
+# energy <- ts(log(series$electric_energy$electric_energy), start = c(1980, 1), frequency = 12)
+
+# forecast::ggseasonplot(energy)
+
+# plot(forecast::mstl(energy))
+
+# ggplot(series$electric_energy, aes(date, electric_energy)) +
+#   geom_line()
+
+# ggplot(series$cars, aes(date, log(cars))) +
+#   geom_line()
+
+# xcar <- ts(log(series$cars$cars), start = c(1980, 1), frequency = 12)
 
 
 

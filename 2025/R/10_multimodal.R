@@ -1,37 +1,37 @@
-# car accidents
-# age of death
-library(tidyverse)
-import::from(here, here)
+# Prompt: Distributions — Multimodal
+# Car accidents in São Paulo by hour of the day (2023/2024). Source: INFOSIGA SP.
+
+library(dplyr)
 library(ggplot2)
-library(ragg)
+library(lubridate)
 
-dat <- tibble(
-  x = lubridate::wday(2:6, label = TRUE),
-  y = c(47.6, 3.5, 1.8, 5.2, 41.9)
-)
+import::from(stringr, str_to_title, str_pad)
+import::from(forcats, fct_reorder)
+import::from(scales, label_number)
+import::from(tibble, tibble)
+import::from(qs, qread)
+import::from(ragg, agg_png)
+import::from(here, here)
 
-ggplot(dat, aes(x, y)) +
-  geom_col(fill = "#023047") +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(expand = expansion(add = c(0, 1))) +
-  labs(
-    title = "Best days to work from home",
-    caption = "Source: MyFakeData.com"
-  ) +
-  theme_minimal(base_family = "Microsoft Sans Serif") +
-  theme(
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    axis.text.x = element_text(size = 12),
-    axis.title.x = element_blank()
-  )
-
+# Throwaway "best days to work from home" joke plot (not run)
+# dat <- tibble(
+#   x = lubridate::wday(2:6, label = TRUE),
+#   y = c(47.6, 3.5, 1.8, 5.2, 41.9)
+# )
+#
+# ggplot(dat, aes(x, y)) +
+#   geom_col(fill = "#023047") +
+#   geom_hline(yintercept = 0) +
+#   scale_y_continuous(expand = expansion(add = c(0, 1))) +
+#   labs(
+#     title = "Best days to work from home",
+#     caption = "Source: MyFakeData.com"
+#   ) +
+#   theme_minimal(base_family = "Microsoft Sans Serif")
 
 # Data --------------------------------------------------------------------
 
-dat = qs::qread("/Users/viniciusoike/Documents/GitHub/weekly_viz/data/car_accidents_non_fatal.qs")
+dat = qread("/Users/viniciusoike/Documents/GitHub/weekly_viz/data/car_accidents_non_fatal.qs")
 
 dat = dat %>%
   as_tibble() %>%
@@ -43,15 +43,15 @@ dat = dat %>%
 
 dat = dat %>%
   mutate(
-    ts_weekday = stringr::str_to_title(ts_weekday),
+    ts_weekday = str_to_title(ts_weekday),
     ts_weekday = factor(
       ts_weekday,
       levels = c("Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado")
     ),
     ts_date_full = paste(ts_date, ts_time_accident),
     ts_date_ymdhm = ymd_hm(ts_date_full),
-    ts_time_accident = lubridate::hm(ts_time_accident),
-    ts_hour = lubridate::hour(ts_time_accident)
+    ts_time_accident = hm(ts_time_accident),
+    ts_hour = hour(ts_time_accident)
   )
 
 dat <- dat |>
@@ -68,12 +68,13 @@ dat <- dat |>
     period = fct_reorder(period, seconds)
   )
 
-accidents_halfhour <- dat |>
-  summarise(total = sum(victims_total), .by = "period") |>
-  arrange(period)
-
-ggplot(accidents_halfhour, aes(period, total)) +
-  geom_col()
+# Half-hour aggregation check (exploratory, not run)
+# accidents_halfhour <- dat |>
+#   summarise(total = sum(victims_total), .by = "period") |>
+#   arrange(period)
+#
+# ggplot(accidents_halfhour, aes(period, total)) +
+#   geom_col()
 
 accidents_hour = dat |>
   filter(ts_year >= 2022, ts_year <= 2023) |>
@@ -120,56 +121,43 @@ df_text <- tibble(
   color = factor(c(rep(0, 6), rep(1, 12), rep(0, 6)))
 )
 
-dat <- accidents_hour |>
-  mutate(ts_hour = fct_rev(ts_hour))
-
-dat <- dat |>
-  mutate(
-    label_num = format(round(total, -2), big.mark = "."),
-    color = factor(c(rep(0, 6), rep(1, 12), rep(0, 6)))
-  )
-
-
-# Plot 1 ------------------------------------------------------------------
-
-# Horizontal plot with labels
-ggplot(dat, aes(ts_hour, total)) +
-  geom_col(aes(fill = ts_hour)) +
-  geom_text(
-    data = df_text,
-    aes(x = x, y = y, label = label_x, color = color),
-    family = "Roboto Slab") +
-  geom_text(
-    aes(y = total - 1000, label = label_num, color = color),
-    family = "Roboto Slab") +
-  scale_color_manual(values = c("white", "black")) +
-  coord_flip() +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(labels = scales::label_number(big.mark = "."), expand = expansion(add = c(0, NA))) +
-  scale_fill_manual(values = cores[inds]) +
-  guides(fill = "none") +
-  labs(
-    title = "Every hour is rush hour",
-    subtitle = "Car accidents in São Paulo by hour of the day (2023/2024).\nThe colors roughly indicate daylight patterns throughout the year.",
-    x = "Hour of the day",
-    y = "Car accidents",
-    caption = "Source: INFOSIGA SP") +
-  theme_minimal(base_family = "Roboto Slab") +
-  theme(
-    legend.position = "none",
-    panel.background = element_rect(fill = offwhite, color = offwhite),
-    plot.background = element_rect(fill = offwhite, color = offwhite),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_blank(),
-    axis.text.y = element_blank(),
-    axis.text.x = element_blank()
-    #axis.text.x = element_text(size = 12, family = "Roboto Slab")
-  )
+# Plot 1: horizontal version with value labels (supplementary, not run) ----
+# dat <- accidents_hour |>
+#   mutate(ts_hour = fct_rev(ts_hour))
+#
+# dat <- dat |>
+#   mutate(
+#     label_num = format(round(total, -2), big.mark = "."),
+#     color = factor(c(rep(0, 6), rep(1, 12), rep(0, 6)))
+#   )
+#
+# ggplot(dat, aes(ts_hour, total)) +
+#   geom_col(aes(fill = ts_hour)) +
+#   geom_text(
+#     data = df_text,
+#     aes(x = x, y = y, label = label_x, color = color),
+#     family = "Roboto Slab") +
+#   geom_text(
+#     aes(y = total - 1000, label = label_num, color = color),
+#     family = "Roboto Slab") +
+#   scale_color_manual(values = c("white", "black")) +
+#   coord_flip() +
+#   geom_hline(yintercept = 0) +
+#   scale_y_continuous(labels = label_number(big.mark = "."), expand = expansion(add = c(0, NA))) +
+#   scale_fill_manual(values = cores[inds]) +
+#   guides(fill = "none") +
+#   labs(
+#     title = "Every hour is rush hour",
+#     subtitle = "Car accidents in São Paulo by hour of the day (2023/2024).\nThe colors roughly indicate daylight patterns throughout the year.",
+#     x = "Hour of the day",
+#     y = "Car accidents",
+#     caption = "Source: INFOSIGA SP") +
+#   theme_minimal(base_family = "Roboto Slab")
 
 
-# Plot 2 ------------------------------------------------------------------
+# Plot --------------------------------------------------------------------
 
-ggplot(accidents_hour, aes(ts_hour, total)) +
+p2 <- ggplot(accidents_hour, aes(ts_hour, total)) +
   geom_col(aes(fill = ts_hour)) +
   geom_text(
     data = df_text,
@@ -178,7 +166,7 @@ ggplot(accidents_hour, aes(ts_hour, total)) +
   scale_color_manual(values = c("white", "black")) +
   geom_hline(yintercept = 0) +
   scale_y_continuous(
-    labels = scales::label_number(big.mark = "."),
+    labels = label_number(big.mark = "."),
     expand = expansion(add = c(0, NA))) +
   scale_fill_manual(values = cores[inds]) +
   guides(fill = "none") +
@@ -200,10 +188,17 @@ ggplot(accidents_hour, aes(ts_hour, total)) +
   )
 
 
-# ggsave(here("plots/10_multimodal_1.png"), p1)
-# ggsave(here("plots/10_multimodal_3.png"), p2)
+# Save --------------------------------------------------------------------
+
+ggsave(
+  here("2025/plots/10_multimodal_3.png"),
+  p2,
+  width = 9,
+  height = 6,
+  device = agg_png
+)
+
+# Multimodality tests (exploratory, not run)
 # library(multimode)
-#
-# modetest(sample(dat$ts_hour, 5000),method = 'SI')
-#
+# modetest(sample(dat$ts_hour, 5000), method = "SI")
 # multimode::modetest(accidents_hour$total)

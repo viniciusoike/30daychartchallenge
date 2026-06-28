@@ -1,50 +1,60 @@
+# Prompt: Comparisons — Slope
+# Road-traffic deaths 1980 vs 2019 for six countries. Source: WHO Mortality DB.
+
 library(dplyr)
 library(ggplot2)
-library(ragg)
-library(stringr)
-library(ggtext)
-library(ggflags)
-library(scales)
+
+import::from(ragg, agg_png)
+import::from(readr, read_csv)
+import::from(janitor, clean_names)
+import::from(stringr, str_remove, str_glue, str_wrap)
+import::from(scales, number, label_number)
+import::from(ggtext, geom_richtext)
+import::from(ggflags, geom_flag)
+import::from(here, here)
 
 options(scales.big.mark = ".")
 options(scales.decimal.mark = ",")
 
-import::from(here, here)
+# Data --------------------------------------------------------------------
 
-who <- readr::read_csv(
+who <- read_csv(
   here("2025/data/day_24/WHOMortalityDatabaseRoad traffic accidents.csv"),
   skip = 6
 )
 
 who <- who |>
-  janitor::clean_names() |>
+  clean_names() |>
   rename(
     death_rate = death_rate_per_100_000_population,
     death_rate_adj = age_standardized_death_rate_per_100_000_standard_population,
     pct_deaths = percentage_of_cause_specific_deaths_out_of_total_deaths
   ) |>
   mutate(
-    death_rate = as.numeric(stringr::str_remove(death_rate, ","))
+    death_rate = as.numeric(str_remove(death_rate, ","))
   )
 
-who |>
-  filter(
-    number > 0,
-    year == 1980 | year == 2019,
-    age_group == "[All]",
-    sex == "All"
-  ) |>
-  arrange(year) |>
-  summarise(
-    t0 = first(year),
-    t1 = last(year),
-    m0 = first(number),
-    m1 = last(number),
-    dm = (last(number) / first(number) - 1) * 100,
-    da = first(number) - last(number),
-    .by = "country_name"
-  ) |>
-  arrange(desc(da))
+# Ranking check (exploratory, not run)
+# who |>
+#   filter(
+#     number > 0,
+#     year == 1980 | year == 2019,
+#     age_group == "[All]",
+#     sex == "All"
+#   ) |>
+#   arrange(year) |>
+#   summarise(
+#     t0 = first(year),
+#     t1 = last(year),
+#     m0 = first(number),
+#     m1 = last(number),
+#     dm = (last(number) / first(number) - 1) * 100,
+#     da = first(number) - last(number),
+#     .by = "country_name"
+#   ) |>
+#   arrange(desc(da))
+
+# Wrangle -----------------------------------------------------------------
 
 # Select countries
 sel_countries <- c("BRA", "USA", "EGY", "JPN", "GBR", "RUS")
@@ -90,7 +100,7 @@ df_label <- total_trend |>
     label_num0 = number(m0, scale = 1e-3, suffix = "k", accuracy = 0.1),
     label_num1 = number(m1, scale = 1e-3, suffix = "k", accuracy = 0.1),
     label_diff = number(dm, scale = 1, suffix = "%", accuracy = 0.1),
-    label = stringr::str_glue(
+    label = str_glue(
       "<b>{country_name} ({label_diff})</b><br>{label_num0} ({t0}) → {label_num1} ({t1})"
     )
   )
@@ -186,7 +196,7 @@ slope_plot <- ggplot(
   ) +
   scale_y_continuous(
     breaks = seq(0, 50000, 10000),
-    labels = scales::label_number(big.mark = ".")
+    labels = label_number(big.mark = ".")
   ) +
   scale_color_manual(values = pal_colors) +
   scale_fill_manual(values = pal_colors) +
@@ -203,10 +213,13 @@ slope_plot <- ggplot(
   ) +
   theme_plot
 
+# Save --------------------------------------------------------------------
+
 ggsave(
   here("2026/plots/04_slope.png"),
   slope_plot,
   width = 8,
   height = 5,
-  dpi = 400
+  dpi = 400,
+  device = agg_png
 )

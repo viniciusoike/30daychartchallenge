@@ -1,17 +1,27 @@
+# Prompt: Comparisons — Ranking
+# Bump chart ranking the 25 most populous Brazilian cities across indicators.
+# Source: IPS Brasil (2024).
+
 library(dplyr)
-library(tidyr)
 library(ggplot2)
 library(ggbump)
-library(ragg)
+
+import::from(tidyr, pivot_longer)
+import::from(readr, read_csv)
+import::from(janitor, clean_names)
+import::from(ragg, agg_png)
 import::from(stringr, str_wrap)
 import::from(here, here)
 
-dat <- readr::read_csv(here("data/day_5/ips_brasil_municipios.csv"))
+# Data --------------------------------------------------------------------
 
-dict <- tibble(
-  original_names = names(dat),
-  col_names = janitor::make_clean_names(original_names)
-)
+dat <- read_csv(here("data/day_5/ips_brasil_municipios.csv"))
+
+# Column-name dictionary (helper, not run)
+# dict <- tibble(
+#   original_names = names(dat),
+#   col_names = make_clean_names(original_names)
+# )
 
 inds <- c(
   "indice_de_progresso_social",
@@ -36,7 +46,7 @@ labels <- c(
 )
 
 subdat <- dat |>
-  janitor::clean_names() |>
+  clean_names() |>
   select(
     codigo_ibge, municipio, uf, populacao_2022, all_of(inds)
   )
@@ -60,9 +70,10 @@ ranking <- ranked |>
     rank_labels = if_else(rank %in% c(1, 5, 10, 15, 20, 25), paste0(rank, "°"), NA)
   )
 
-ranking |>
-  select(measure, rank, municipio, highlight, is_highlight)
+# ranking |>
+#   select(measure, rank, municipio, highlight, is_highlight)
 
+# Plot --------------------------------------------------------------------
 
 cores <- c(
   "#c7c7c7", "#101010",  "#225d9f", "#f7443e", "#2a9d8f", "#386641", "#fb8500",
@@ -118,4 +129,12 @@ p <- ggplot(ranking, aes(measure, rank, group = municipio)) +
     legend.position = "none",
   )
 
-ggsave(here("plots/5_ranking.png"), p, width = 12.5, height = 6.5)
+# Save --------------------------------------------------------------------
+
+ggsave(
+  here("2025/plots/05_ranking.png"),
+  p,
+  width = 12.5,
+  height = 6.5,
+  device = agg_png
+)
