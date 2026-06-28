@@ -1,19 +1,30 @@
+# Prompt: Comparisons — Experimental
+# Modal share by municipality on a ternary plot (static PNG + interactive HTML).
+# Source: IBGE Census 2022 (SIDRA 10332), population (SIDRA 6579).
+
 library(dplyr)
 library(ggplot2)
 library(ggtern)
-library(stringr)
-
+library(plotly)
 
 import::from(forcats, fct_reorder)
 import::from(tidyr, pivot_wider)
-import::from(here, here)
+import::from(stringr, str_detect, str_sub, str_glue)
+import::from(tibble, tibble, as_tibble)
+import::from(scales, number)
+import::from(MetBrewer, met.brewer)
+import::from(htmlwidgets, onRender, saveWidget)
 import::from(sidrar, get_sidra)
 import::from(geobr, read_municipality)
 import::from(sf, st_drop_geometry)
 import::from(janitor, clean_names)
+import::from(here, here)
+import::from(readr, write_rds)
 
-cities <- geobr::read_municipality(year = 2022, showProgress = FALSE)
-dim_muni <- as_tibble(sf::st_drop_geometry(cities))
+# Data --------------------------------------------------------------------
+
+cities <- read_municipality(year = 2022, showProgress = FALSE)
+dim_muni <- as_tibble(st_drop_geometry(cities))
 
 pop_muni <- get_sidra(
   6579,
@@ -22,7 +33,7 @@ pop_muni <- get_sidra(
 )
 
 tab_pop <- pop_muni |>
-  janitor::clean_names() |>
+  clean_names() |>
   as_tibble() |>
   select(code_muni = municipio_codigo, pop = valor) |>
   mutate(code_muni = as.numeric(code_muni))
@@ -42,7 +53,7 @@ for (i in 1:5) {
 tab_modals <- bind_rows(modals)
 
 tab_modals <- tab_modals |>
-  janitor::clean_names() |>
+  clean_names() |>
   as_tibble()
 
 cols_select <- c(
@@ -141,7 +152,7 @@ share_modes <- share_modes |>
 
 main_cities <- subset(share_modes, pop > 1e5)
 
-readr::write_rds(share_modes, "2026/data/census_modes/share_modes.rds")
+write_rds(share_modes, "2026/data/census_modes/share_modes.rds")
 
 data_tern <- main_cities |>
   pivot_wider(
@@ -149,7 +160,7 @@ data_tern <- main_cities |>
     names_from = "type",
     values_from = "share"
   ) |>
-  janitor::clean_names()
+  clean_names()
 
 sel_cities <- c(
   4314902,
@@ -163,11 +174,14 @@ sel_cities <- c(
   5103403
 )
 
-main_cities |>
-  filter(type == "Car or motorcycle") |>
-  slice_max(share, n = 10)
+# Top car/motorcycle cities (exploratory, not run)
+# main_cities |>
+#   filter(type == "Car or motorcycle") |>
+#   slice_max(share, n = 10)
 
 offwhite <- "#f8fbf8"
+
+# Plot (static) -----------------------------------------------------------
 
 final_plot <- ggtern(
   data_tern,
@@ -185,7 +199,7 @@ final_plot <- ggtern(
     size = 2,
     family = "Roboto Slab",
   ) +
-  scale_fill_manual(values = MetBrewer::met.brewer("Hokusai1", 5)) +
+  scale_fill_manual(values = met.brewer("Hokusai1", 5)) +
   labs(
     x = "Transit",
     y = "Active",
@@ -213,30 +227,29 @@ final_plot <- ggtern(
   )
 
 ggsave(
-  here::here("2026", "plots", "05_experimental.png"),
+  here("2026", "plots", "05_experimental.png"),
   final_plot,
   width = 7,
   height = 7,
   dpi = 400
 )
 
-library(plotly)
-library(htmlwidgets)
+# Interactive (plotly) ----------------------------------------------------
 
-# ---- Palette & helpers -------------------------------------------------------
+## Palette & helpers ----------------------------------------------------
 
 data_tern <- data_tern |>
   left_join(select(dim_muni, code_muni, abbrev_state), by = "code_muni") |>
   left_join(tab_pop, by = "code_muni") |>
   mutate(
     city_label = str_glue("{name_muni} ({abbrev_state})"),
-    pop_trunc = scales::number(pop, accuracy = 1e3, big.mark = ","),
+    pop_trunc = number(pop, accuracy = 1e3, big.mark = ","),
   )
 
 offwhite <- "#f8fbf8"
 
 region_lvls <- levels(data_tern$name_region)
-pal_raw <- MetBrewer::met.brewer("Hokusai1", length(region_lvls))
+pal_raw <- met.brewer("Hokusai1", length(region_lvls))
 region_pal <- setNames(as.character(pal_raw), region_lvls)
 
 hex_to_rgba <- function(hex, alpha = 1) {
@@ -261,7 +274,7 @@ make_hover <- function(df) {
   )
 }
 
-# ---- Build figure -----------------------------------------------------------
+## Build figure ---------------------------------------------------------
 
 fig <- plot_ly()
 
@@ -310,7 +323,7 @@ fig <- add_trace(
   )
 )
 
-# ---- Layout -----------------------------------------------------------------
+## Layout ---------------------------------------------------------------
 
 axis_style <- function(title_text) {
   list(
@@ -380,7 +393,7 @@ fig <- layout(
   )
 )
 
-# ---- Hover effect & city search ---------------------------------------------
+## Hover effect & city search -------------------------------------------
 # Flicker-safe highlight. The data-point markers are never resized (resizing the
 # point under the cursor changes its hit-area and re-triggers hover -> flicker).
 # Instead we (1) dim the other regions, and (2) move a dedicated overlay trace
@@ -516,7 +529,7 @@ try(
 )
 
 # Interactive version (hover highlight + city search live only in the HTML).
-htmlwidgets::saveWidget(
+saveWidget(
   fig,
   "2026/plots/05_experimental.html",
   selfcontained = TRUE
