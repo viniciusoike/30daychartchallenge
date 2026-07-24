@@ -12,6 +12,12 @@ My submissions for the 30 Day Chart Challenge.
   <img width="80%" src="2026/plots/01_part_to_whole.png">
 </p>
 
+### 2 - Pictogram
+
+<p align="center">
+  <img width="80%" src="2026/plots/02_pictogram.png">
+</p>
+
 ### 3 - Mosaic
 
 <p align="center">
