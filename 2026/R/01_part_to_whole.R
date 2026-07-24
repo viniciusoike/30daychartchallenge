@@ -9,7 +9,6 @@ library(patchwork)
 import::from(sidrar, get_sidra)
 import::from(geobr, read_state)
 import::from(janitor, clean_names)
-import::from(tibble, tibble, as_tibble)
 import::from(tidyr, expand_grid)
 import::from(stringr, str_detect, str_sub)
 import::from(forcats, fct_reorder)
@@ -18,7 +17,7 @@ import::from(here, here)
 
 # Data --------------------------------------------------------------------
 
-states <- read_state(showProgress = FALSE)
+states <- read_state(year = 2022, showProgress = FALSE)
 dim_state <- as_tibble(st_drop_geometry(states))
 dim_region <- distinct(dim_state, code_region, name_region)
 
@@ -235,7 +234,6 @@ title_text <- "Lora"
 # [15] "#C7BF82" "#ABB98B" "#8EAF91" "#6A8D80" "#466C6F" "#224B5E"
 
 colors_modes <- c(
-  #"Active" = "#94b594",
   "Active" = "#8EAF91",
   "Car" = "#9B4538",
   "Motorcycle" = "#EABC6D",
@@ -244,7 +242,6 @@ colors_modes <- c(
 )
 
 offwhite <- "#f5f5dc"
-
 
 theme_plot <- theme_minimal(base_family = base_text) +
   theme_sub_panel(
@@ -256,19 +253,28 @@ theme_plot <- theme_minimal(base_family = base_text) +
     title = element_text(family = title_text, size = 14, hjust = 0.5)
   )
 
+tab_brazil <- tab_brazil |>
+  mutate(
+    text_col = if_else(
+      group %in% c("Public transit", "Car"),
+      "#ffffff",
+      "#000000"
+    )
+  )
+
 p_brazil <- ggplot(tab_brazil, aes(x = 1, y = share, fill = group)) +
   geom_col() +
   geom_text(
-    aes(x = 1, y = share, label = label_num, group = group),
+    aes(x = 1, y = share, label = label_num, group = group, color = text_col),
     inherit.aes = FALSE,
     position = position_stack(vjust = 0.5),
     family = base_text,
-    size = 4,
-    color = "#000000"
+    size = 4
   ) +
   scale_x_continuous(expand = expansion(0.05)) +
   scale_y_continuous(expand = expansion(c(0, 0.05))) +
   scale_fill_manual(values = colors_modes) +
+  scale_color_identity() +
   guides(fill = guide_legend(reverse = TRUE)) +
   labs(
     title = "Brazil",
@@ -283,11 +289,20 @@ p_brazil <- ggplot(tab_brazil, aes(x = 1, y = share, fill = group)) +
     background = element_rect(fill = offwhite, color = offwhite)
   )
 
+tab_region <- tab_region |>
+  mutate(
+    text_col = if_else(
+      group %in% c("Public transit", "Car"),
+      "#ffffff",
+      "#000000"
+    )
+  )
+
 p_region <- ggplot(tab_region, aes(share, name_region, fill = group)) +
   geom_col(width = 0.45) +
   geom_text(
     data = subset(tab_region, group == "Active"),
-    aes(x = 0, y = name_region, label = name_region),
+    aes(x = 0.05, y = name_region, label = name_region),
     hjust = 0,
     size = 4,
     family = title_text,
@@ -295,7 +310,7 @@ p_region <- ggplot(tab_region, aes(share, name_region, fill = group)) +
     nudge_y = 0.35
   ) +
   geom_text(
-    aes(share, name_region, label = label_num, group = group),
+    aes(share, name_region, label = label_num, group = group, color = text_col),
     inherit.aes = FALSE,
     position = position_stack(vjust = 0.5),
     family = base_text,
@@ -304,6 +319,7 @@ p_region <- ggplot(tab_region, aes(share, name_region, fill = group)) +
   scale_x_continuous(expand = c(0), breaks = c(0, 100)) +
   scale_y_discrete(expand = expansion(c(0.1, 0.2))) +
   scale_fill_manual(values = colors_modes) +
+  scale_color_identity() +
   guides(fill = guide_legend(reverse = TRUE)) +
   labs(
     title = "Regions",
@@ -317,7 +333,10 @@ p_region <- ggplot(tab_region, aes(share, name_region, fill = group)) +
     background = element_rect(fill = offwhite)
   ) +
   theme_sub_axis(text = element_blank()) +
-  theme_sub_axis_x(line = element_line(), ticks = element_line())
+  theme_sub_axis_x(
+    line = element_line(lineend = "square"),
+    ticks = element_line()
+  )
 
 region_agg <- tab_region |>
   summarise(total = sum(trips), .by = "code_region") |>
@@ -365,14 +384,22 @@ p_region_total <- ggplot(region_agg, aes(x = 1, y = y)) +
     margin = margin(0, 8, 0, 0)
   )
 
+caption_source <- "Source: IBGE (Census, 2022) • @viniciusoike"
+caption_description <- stringr::str_wrap(
+  "'Car' includes cabs (and similar shared taxis, e.g., Uber); 'Motorcycle' includes mototaxis; 'Active' includes walking and cycling; 'Public transit' includes buses, trains/metros, VLT, shared boats, and informal public transportation (e.g. vans). Total trips are calculated as the sum of daily commutes (one-way) only considering those who study/work outside of their household atleast three times a week. Data collection ocurred between late 2022 and early 2023 and was partly affected by the Covid-19 Pandemic.",
+  161
+)
+
+caption <- stringr::str_c(caption_source, "\n", caption_description)
+
 panel <- p_brazil +
   p_region +
   p_region_total +
   plot_layout(widths = c(0.1, 0.75, 0.15), guides = "collect") +
   plot_annotation(
     title = "Getting around in Brazil",
-    subtitle = "Main transport mode when commuting to work or school by regions in Brazil (2022).",
-    caption = "Source: IBGE (Census, 2022) - when multiple modes are used, considers the 'main' mode. @viniciusoike\n'Car' includes cabs (and similar shared taxis, e.g., Uber); 'Motorcycle' includes mototaxis; 'Active' includes walking and cycling;\n 'Public transit' includes buses, trains/metros, shared boats, and informal public transportation (e.g. vans).",
+    subtitle = "Main transport mode when commuting to work or school: national share, regional share, and total daily trips (2022).",
+    caption = caption,
     theme = theme(
       plot.background = element_rect(fill = offwhite, color = offwhite),
       panel.background = element_rect(fill = offwhite, color = offwhite),
@@ -391,7 +418,7 @@ panel <- p_brazil +
       ),
       plot.caption = element_text(
         family = base_text,
-        size = 6,
+        size = 8,
         hjust = 0,
         color = "gray50"
       ),
@@ -405,7 +432,7 @@ ggsave(
   here("2026/plots/01_part_to_whole.png"),
   panel,
   width = 9,
-  height = 5,
+  height = 5.5,
   dpi = 400
 )
 
@@ -472,7 +499,6 @@ ggsave(
 
 # library(patchwork)
 
-
 # p2 +
 #   (p_states[[1]] /
 #     p_states[[2]] /
@@ -481,10 +507,8 @@ ggsave(
 #     p_states[[5]]) +
 #   plot_layout(guides = "collect")
 
-
 # subdat <- tab_full_state |>
 #   filter(code_region == 1)
-
 
 # states_abb_order <- subdat |>
 #   filter(group == "Car") |>
@@ -519,7 +543,6 @@ ggsave(
 
 # plot_state(1)
 
-
 # p2 <- ggplot(tab_region, aes(share, 1, fill = group)) +
 #   geom_col(orientation = "y") +
 #   facet_wrap(vars(code_region), ncol = 1) +
@@ -532,7 +555,6 @@ ggsave(
 #     fill = NULL
 #   ) +
 #   theme_plot
-
 
 # xbreaks <- unique(fake_grid$code_state)
 
@@ -565,7 +587,6 @@ ggsave(
 # (p1 | p2 | p3) +
 #   plot_layout(guides = "collect") &
 #   theme(legend.position = "bottom")
-
 
 # tab_grouped_educ <- tab |>
 #   filter(
