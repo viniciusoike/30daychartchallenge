@@ -5,10 +5,11 @@
 library(dplyr)
 library(ggplot2)
 library(ggdist)
-library(tidyr)
 
 import::from(readxl, read_excel)
 import::from(here, here)
+import::from(tibble, tibble)
+import::from(colorspace, darken)
 
 # Data --------------------------------------------------------------------
 # IBGE Tabuas Completas de Mortalidade 2022 (xlsx per sex). Column 1 is exact
@@ -184,7 +185,7 @@ panel <- ggplot(dots, aes(x = rem, fill = sex, color = sex)) +
   ) +
   scale_y_continuous(NULL, breaks = NULL, expand = expansion(c(0, 0.05))) +
   scale_fill_manual(values = colors_sex) +
-  scale_color_manual(values = colorspace::darken(colors_sex, 0.2)) +
+  scale_color_manual(values = darken(colors_sex, 0.2)) +
   labs(
     title = "The years you have left, probably",
     subtitle = "For a Brazilian alive today, each panel shows 100 equally-likely lives — one dot per possible number of remaining\nyears. Dashed line marks the median. As you survive longer, the cloud shifts left and tightens; women's runs a bit longer.",

@@ -1,11 +1,23 @@
-library(tidyverse)
-library(countries)
+# Prompt: Time series
+# Global Change -- share of population living in urban areas, 1950-2025 (OWID)
+
+library(dplyr)
+library(ggplot2)
 
 import::from(here, here)
+import::from(readr, read_csv)
+import::from(tidyr, pivot_longer, separate)
+import::from(stringr, str_wrap)
+import::from(janitor, clean_names)
+import::from(countries, country_info)
+import::from(scales, number)
 
-urbanization <- read_csv(here(
-  "2026/data/urbanization/urban-and-rural-population/urban-and-rural-population.csv"
-))
+# Data --------------------------------------------------------------------
+
+# Stale: total urban/rural population counts were not used in the final chart.
+# urbanization <- read_csv(here(
+#   "2026/data/urbanization/urban-and-rural-population/urban-and-rural-population.csv"
+# ))
 
 urban_share <- read_csv(here(
   "2026/data/urbanization/share-urban-and-rural-population/share-urban-and-rural-population.csv"
@@ -18,7 +30,7 @@ pop <- country_info(
 
 
 urban_share <- urban_share |>
-  janitor::clean_names() |>
+  clean_names() |>
   pivot_longer(cols = urban:rural) |>
   separate(name, into = c("urban", "fcast"), sep = "_", fill = "right") |>
   mutate(fcast = if_else(is.na(fcast), "past", fcast))
@@ -48,6 +60,8 @@ urban_share <- left_join(urban_share, pop, by = join_by(code == countries))
 #   ) |>
 #   arrange(desc(total_chg)) |>
 #   head(20)
+
+# Wrangle -------------------------------------------------------------------
 
 sel_countries <- c(
   "Angola",
@@ -100,9 +114,11 @@ main_color <- "#1B3A4B"
 urban_endpoints <- urban_series |>
   filter(year %in% c(1950, 2025)) |>
   mutate(
-    label_num = scales::number(value, accuracy = 0.1, suffix = "%"),
+    label_num = number(value, accuracy = 0.1, suffix = "%"),
     label_pos = if_else(value > 80, value - 15, value + 15)
   )
+
+# Plot (EN) -----------------------------------------------------------------
 
 plot_final <- ggplot(urban_series, aes(year, value)) +
   geom_line(lwd = 0.6, color = main_color) +
@@ -170,13 +186,14 @@ plot_final <- ggplot(urban_series, aes(year, value)) +
   )
 
 ggsave(
-  here::here("2026", "plots", "20_global_change.png"),
+  here("2026", "plots", "20_global_change.png"),
   plot_final,
   width = 8,
   height = 6,
   dpi = 400
 )
 
+# Plot (PT) -----------------------------------------------------------------
 
 plot_final_pt <- ggplot(urban_series, aes(year, value)) +
   geom_line(lwd = 0.6, color = main_color) +
@@ -244,7 +261,7 @@ plot_final_pt <- ggplot(urban_series, aes(year, value)) +
   )
 
 ggsave(
-  here::here("2026", "plots", "20_global_change_pt.png"),
+  here("2026", "plots", "20_global_change_pt.png"),
   plot_final_pt,
   width = 8,
   height = 6,

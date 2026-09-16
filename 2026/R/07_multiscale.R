@@ -3,13 +3,15 @@
 
 library(dplyr)
 library(ggplot2)
-library(stringr)
-library(ggtext)
 
-import::from(forcats, fct_reorder)
 import::from(here, here)
 import::from(sidrar, get_sidra)
 import::from(janitor, clean_names)
+import::from(readr, read_rds, write_rds)
+import::from(stringr, str_detect)
+import::from(ggtext, element_textbox)
+import::from(scales, number)
+import::from(colorspace, darken)
 
 # Data --------------------------------------------------------------------
 
@@ -24,7 +26,7 @@ cols_select <- c(
 )
 
 if (file.exists(cache_file)) {
-  tab_modals <- readr::read_rds(cache_file)
+  tab_modals <- read_rds(cache_file)
 } else {
   # Census mobility (table 10332) is pulled one region at a time at the
   # municipality level, mirroring 05_experimental.R.
@@ -45,7 +47,7 @@ if (file.exists(cache_file)) {
     select(all_of(cols_select)) |>
     mutate(code_muni = as.numeric(code_muni))
 
-  readr::write_rds(tab_modals, cache_file)
+  write_rds(tab_modals, cache_file)
 }
 
 # Municipality population (used as density weight)
@@ -70,8 +72,8 @@ tab_pop <- pop_muni |>
     )
   )
 
-tab_pop |>
-  count(pop_class)
+# tab_pop |>
+#   count(pop_class)
 
 # Mode classification (walking-only; cycling falls into Other) ------------
 
@@ -125,8 +127,8 @@ dat <- share_modes |>
     mode = factor(group, levels = lvls_modes)
   )
 
-dat |>
-  count(pop_class)
+# dat |>
+#   count(pop_class)
 
 # Theme (matches 01_part_to_whole.R) --------------------------------------
 
@@ -140,10 +142,10 @@ colors_modes <- c(
   "Car" = "#9B4538",
   "Motorcycle" = "#EABC6D"
 )
-MetBrewer::met.brewer("Hokusai1")[7]
+# MetBrewer::met.brewer("Hokusai1")[7]
 
 label_percent_br <- function(x) {
-  scales::number(
+  number(
     x,
     accuracy = 1,
     scale = 1,
@@ -223,7 +225,7 @@ panel <- ggplot(dat, aes(x = share, weight = pop, fill = mode, color = mode)) +
   ) +
   scale_y_continuous(expand = expansion(c(0, 0.05))) +
   scale_fill_manual(values = colors_modes) +
-  scale_color_manual(values = colorspace::darken(colors_modes, 0.3)) +
+  scale_color_manual(values = darken(colors_modes, 0.3)) +
   labs(
     title = "Getting around, scale by scale",
     subtitle = "Distribution of municipal modal share by city size in Brazil (2022). Each curve is the population-weighted\ndensity of cities; rows are city-size classes, columns are the main commute mode.",

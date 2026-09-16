@@ -1,8 +1,22 @@
+# Prompt: Time series
+# South China Morning Post -- household debt service, household debt and the
+# Selic policy rate (BCB), in the visual style of SCMP charts.
+
 library(ggplot2)
 library(dplyr)
-library(trendseries)
-library(rbcb)
+library(patchwork)
+library(scales)
 
+import::from(here, here)
+import::from(tibble, tibble, tribble)
+import::from(readr, read_rds, write_rds)
+import::from(rbcb, get_series)
+import::from(purrr, reduce)
+import::from(tidyr, pivot_longer)
+import::from(stringr, str_glue)
+import::from(ggtext, geom_richtext, element_markdown)
+
+# Theme ---------------------------------------------------------------------
 
 # SCMP-inspired color palette
 scmp_red <- "#D7282F"
@@ -11,7 +25,7 @@ scmp_dark <- "#1A1A1A"
 scmp_gray <- "#9E9E9E"
 scmp_bg <- "#F7F4EF" # warm off-white, common in SCMP web charts
 
-base_size = 11
+base_size <- 11
 
 theme_scmp <- theme_minimal(base_size = base_size, base_family = "Roboto") +
   theme_sub_plot(
@@ -54,72 +68,76 @@ theme_scmp <- theme_minimal(base_size = base_size, base_family = "Roboto") +
   ) +
   theme_sub_legend(position = "none")
 
+# Data --------------------------------------------------------------------
 
 params <- tribble(
   ~code , ~name                    ,
    4189 , "selic"                  ,
 
-  # ── Taxas de financiamento imobiliário ──────────────────────────────────────
+  # Taxas de financiamento imobiliário
   20772 , "taxa_fimob_pf_mercado"  ,
   20773 , "taxa_fimob_pf_regulado" ,
   20774 , "taxa_fimob_pf_total"    ,
 
-  # ── Volume de crédito imobiliário — concessões PF (R$ mil) ──────────────────
+  # Volume de crédito imobiliário — concessões PF (R$ mil)
   20704 , "fimob_pf_total"         ,
 
-  # ── Comprometimento de renda (% renda mensal) ───────────────────────────────
+  # Comprometimento de renda (% renda mensal)
   29033 , "comprometimento_juros"  ,
   29034 , "comprometimento_serv"   ,
   29035 , "comprometimento_exchab" ,
   29036 , "comprometimento_amort"  ,
 
-  # ── Endividamento das famílias (% renda acumulada 12 meses) ─────────────────
+  # Endividamento das famílias (% renda acumulada 12 meses)
   29037 , "end_total"              ,
   29038 , "end_exchab"
 )
 
-# series <- list()
+# BCB series are downloaded once and cached (2026/data/ is gitignored), so a
+# fresh clone re-downloads on first run.
+cache_file <- here("2026", "data", "macroeconomics", "bcb_series.rds")
 
-# for (i in seq_len(nrow(params))) {
-#   code <- params$code[i]
-#   name <- params$name[i]
+if (file.exists(cache_file)) {
+  series <- read_rds(cache_file)
+} else {
+  series <- list()
+  for (i in seq_len(nrow(params))) {
+    code <- params$code[i]
+    name <- params$name[i]
 
-#   tryCatch(
-#     expr = {
-#       series[[name]] <- get_series(code)
-#     },
-#     error = function(e) {
-#       message(
-#         "  ✗ Failed to download series ",
-#         code,
-#         " (",
-#         name,
-#         "): ",
-#         conditionMessage(e)
-#       )
-#       series[[name]] <<- tibble(date = as.Date(NA_character_))
-#     }
-#   )
-# }
+    tryCatch(
+      expr = {
+        series[[name]] <- get_series(code)
+      },
+      error = function(e) {
+        message(
+          "  ✗ Failed to download series ",
+          code,
+          " (",
+          name,
+          "): ",
+          conditionMessage(e)
+        )
+        series[[name]] <<- tibble(date = as.Date(NA_character_))
+      }
+    )
+  }
 
-# readr::write_rds(
-#   series,
-#   here::here("2026", "data", "macroeconomics", "bcb_series.rds")
-# )
+  if (!dir.exists(dirname(cache_file))) {
+    dir.create(dirname(cache_file), recursive = TRUE)
+  }
+  write_rds(series, cache_file)
+}
 
-series <- readr::read_rds(
-  here::here("2026", "data", "macroeconomics", "bcb_series.rds")
-)
-
-# ── Pivot to long format and join metadata ────────────────────────────────────
+# Pivot to long format and join metadata.
 # Each get_series() returns a tibble with columns: date, <code_as_string>.
 # After full_join, the wide table has date + one column per BCB code.
 # pivot_longer converts those numeric-named columns back to a tidy code | value
 # structure, then left_join restores the human-readable name.
 
 tbl_series <- series |>
-  purrr::reduce(full_join, by = "date") |>
-  tidyr::pivot_longer(
+  reduce(full_join, by = "date") |>
+  pivot_longer(
     cols = -date,
     names_to = "code",
     names_transform = list(code = as.integer),
@@ -130,11 +148,6 @@ tbl_series <- series |>
   arrange(name, date)
 
 # Plot data -------------------------------------------------------------------
-
-library(patchwork)
-library(scales)
-library(ggtext)
-import::from(stringr, str_glue)
 
 col_interest <- scmp_red
 col_principal <- "#9FB4C0"
@@ -355,7 +368,7 @@ p_scmp <- p_top /
   theme(plot.background = element_rect(fill = scmp_bg, color = NA))
 
 ggsave(
-  here::here("2026/plots/24_scmp.png"),
+  here("2026/plots/24_scmp.png"),
   plot = p_scmp,
   width = 8,
   height = 10,

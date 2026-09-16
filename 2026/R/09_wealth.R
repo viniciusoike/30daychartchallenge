@@ -1,8 +1,22 @@
-library(maddison)
+# Prompt: Distributions
+# Wealth -- share of world GDP by region since 1950 (Maddison Project)
+
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-library(countrycode)
+
+import::from(here, here)
+import::from(maddison, maddison)
+import::from(countrycode, countrycode)
+import::from(purrr, map)
+import::from(lubridate, make_date)
+import::from(trendseries, df_to_ts)
+import::from(imputeTS, na_kalman, na_interpolation)
+import::from(ekioplot, ekio_pal)
+import::from(colorspace, darken)
+import::from(scales, number, label_percent)
+
+# Data --------------------------------------------------------------------
 
 dat <- maddison |>
   filter(
@@ -30,10 +44,11 @@ dim_countries <- og_series |>
 full_series <- grid |>
   left_join(dim_countries, by = "country") |>
   left_join(select(og_series, year, country, gdp), by = c("year", "country")) |>
-  mutate(year = lubridate::make_date(year, 1, 1))
+  mutate(year = make_date(year, 1, 1))
+
+# Interpolate gaps (Kalman) ------------------------------------------------
 
 interpolate_kalman <- function(df) {
-  # browser()
   # Find first non-NA value
   date_start <- min(subset(df, !is.na(gdp))$year, na.rm = TRUE)
 
@@ -56,7 +71,7 @@ interpolate_kalman <- function(df) {
     )
     return(out)
   }
-  xseries <- trendseries::df_to_ts(
+  xseries <- df_to_ts(
     active,
     date_col = "year",
     value_col = "gdp",
@@ -65,8 +80,8 @@ interpolate_kalman <- function(df) {
 
   xseries <- log(xseries)
   interp <- tryCatch(
-    imputeTS::na_kalman(xseries),
-    error = function(e) imputeTS::na_interpolation(xseries, option = "linear")
+    na_kalman(xseries),
+    error = function(e) na_interpolation(xseries, option = "linear")
   )
   interp_vals <- as.numeric(exp(interp))
 
@@ -90,9 +105,11 @@ interpolate_kalman <- function(df) {
 interpolated_series <- full_series |>
   group_by(country, continent, region, region_wb) |>
   nest() |>
-  mutate(interpolated = purrr::map(data, interpolate_kalman)) |>
+  mutate(interpolated = map(data, interpolate_kalman)) |>
   unnest(cols = interpolated) |>
   ungroup()
+
+# Wrangle regions -----------------------------------------------------------
 
 series <- interpolated_series |>
   mutate(
@@ -110,7 +127,7 @@ series <- interpolated_series |>
 
 final <- series |>
   mutate(
-    region_wb = countrycode(country, "country.name", "region"),
+    # region_wb is already recomputed in `series` above
     region = if_else(
       country %in% c("China", "United States", "Germany", "India"),
       country,
@@ -144,12 +161,13 @@ final_df <- final |>
     region = factor(region, levels = sub_region_levels)
   )
 
+# Theme ---------------------------------------------------------------------
+
 pos_i <- c(2, 4, 6, 8)
-pos_color <- c(1, 2, 3, 4)
-color_palette <- ekioplot::ekio_pal("contrast")[1:5]
+color_palette <- ekio_pal("contrast")[1:5]
 
 exp_color_palette <- color_palette[c(1, 1, 2, 2, 3, 3, 4, 4, 5)]
-new_color_palette <- colorspace::darken(exp_color_palette, 0.35)
+new_color_palette <- darken(exp_color_palette, 0.35)
 new_color_palette[pos_i] <- exp_color_palette[pos_i]
 
 alpha_vals <- c(0.7, 0.9, 0.7, 0.9, 0.7, 0.9, 0.7, 0.9, 0.7)
@@ -181,6 +199,8 @@ theme_plot <- theme_minimal(base_family = font_text) +
     title = element_blank()
   )
 
+# Plot ----------------------------------------------------------------------
+
 final_plot <- ggplot(
   final_df,
   aes(year, share, group = region, alpha = region)
@@ -200,7 +220,7 @@ final_plot <- ggplot(
     aes(
       x = as.Date("2022-01-01"),
       y = share,
-      label = scales::number(share, accuracy = 0.1, scale = 100, suffix = "%")
+      label = number(share, accuracy = 0.1, scale = 100, suffix = "%")
     ),
     family = "Lato",
     position = position_stack(vjust = 0.5),
@@ -217,7 +237,7 @@ final_plot <- ggplot(
   ) +
   scale_y_continuous(
     breaks = seq(0, 1, 0.2),
-    labels = scales::label_percent(),
+    labels = label_percent(),
     expand = expansion(0),
     position = "left"
   ) +
@@ -232,7 +252,7 @@ final_plot <- ggplot(
   theme_plot
 
 ggsave(
-  "2026/plots/09_wealth.png",
+  here("2026/plots/09_wealth.png"),
   final_plot,
   width = 8,
   height = 5,

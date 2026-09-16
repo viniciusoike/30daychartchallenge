@@ -1,16 +1,25 @@
-library(ggplot2)
-library(ggtext)
+# Prompt: Time series
+# Historical -- Brazil's international reserves, 1971-2026 (BCB SGS 3546)
 
+library(ggplot2)
+
+import::from(here, here)
 import::from(dplyr, tibble, mutate, filter)
 import::from(GetBCBData, gbcbd_get_series)
 import::from(stringr, str_glue)
+import::from(ggtext, geom_richtext)
+import::from(scales, label_dollar)
+
+# Data --------------------------------------------------------------------
 
 reserves <- gbcbd_get_series(3546, first.date = "1970-01-01")
-# max(dat$ref.date)
+# max(reserves$ref.date)
 
 reserves <- reserves |>
   filter(ref.date <= as.Date("2026-03-01")) |>
   mutate(bln = value / 1e3)
+
+# Theme ---------------------------------------------------------------------
 
 main_color <- "#1B3A4B"
 offwhite <- "#f8fbf8"
@@ -34,6 +43,8 @@ theme_plot <- theme_minimal(base_family = font_text) +
     line = element_line(color = "gray20", linewidth = 0.5),
     text = element_text(color = "gray20")
   )
+
+# Plot ----------------------------------------------------------------------
 
 df_labels <- tibble(
   date = as.Date(c("1971-06-01", "1990-01-01", "1993-01-01", "2012-01-01")),
@@ -79,7 +90,7 @@ plot_final <- ggplot(reserves, aes(ref.date, bln)) +
   ) +
   scale_y_continuous(
     breaks = seq(0, 400, 50),
-    labels = scales::label_dollar(),
+    labels = label_dollar(),
     expand = expansion(0),
     limits = c(NA, 400)
   ) +
@@ -93,7 +104,7 @@ plot_final <- ggplot(reserves, aes(ref.date, bln)) +
   theme_plot
 
 ggsave(
-  here::here("2026", "plots", "21_historical.png"),
+  here("2026", "plots", "21_historical.png"),
   plot_final,
   width = 8,
   height = 5,

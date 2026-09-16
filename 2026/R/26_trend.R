@@ -1,25 +1,21 @@
-# Day 26 - Trend (Uncertainties): São Paulo Metro ridership forecast ------
+# Prompt: Uncertainties
+# Trend -- São Paulo Metro ridership forecast (SARIMA, 80/95% intervals)
 
 library(ggplot2)
 library(dplyr)
-library(patchwork)
-library(forecast)
-library(trendseries)
-library(metrosp)
-import::from(scales, label_number)
+
+import::from(here, here)
+import::from(metrosp, passengers_entrance, metro_colors)
+import::from(trendseries, augment_trends)
+import::from(forecast, Arima, forecast)
+import::from(tibble, tibble)
+import::from(stringr, str_wrap)
+import::from(scales, label_number, rescale)
 
 options(scales.big.mark = ".")
 options(scales.decimal.mark = ",")
 
-metro_cols <- metro_colors
-metro_cols[1] <- "#1E3A5F"
-metro_cols[3] <- "#C53030"
-metro_cols[4] <- "#D69E2E"
-
-## Data --------------------------------------------------------------------
-
-data(passengers_entrance)
-data(metro_colors)
+# Data --------------------------------------------------------------------
 
 sel_lines <- c(1, 2, 3, 4, 5)
 
@@ -33,15 +29,16 @@ series <- passengers_entrance |>
   select(date, line_number, line_name, value) |>
   arrange(line_number, date)
 
-## Forecast ----------------------------------------------------------------
+# Forecast ------------------------------------------------------------------
 
-dat <- passengers_entrance |>
-  filter(
-    line_number == 1,
-    metric_abb == "total",
-    date >= as.Date("2019-01-01"),
-    date <= as.Date("2024-12-01")
-  )
+# Stale: single-line subset used to test forecast_line() interactively.
+# dat <- passengers_entrance |>
+#   filter(
+#     line_number == 1,
+#     metric_abb == "total",
+#     date >= as.Date("2019-01-01"),
+#     date <= as.Date("2024-12-01")
+#   )
 
 forecast_line <- function(df, h = 12) {
   ts_line <- ts(log(df$value), start = c(2019, 1), frequency = 12)
@@ -88,10 +85,15 @@ full_series <- full_series |>
   ) |>
   arrange(line_number, date)
 
-## Theme -------------------------------------------------------------------
+# Theme ---------------------------------------------------------------------
 
 offwhite <- "#f8fbf8"
 font_text <- "Roboto Slab"
+
+metro_cols <- metro_colors
+metro_cols[1] <- "#1E3A5F"
+metro_cols[3] <- "#C53030"
+metro_cols[4] <- "#D69E2E"
 
 theme_plot <- theme_minimal(base_family = font_text) +
   theme_sub_plot(
@@ -112,10 +114,10 @@ theme_plot <- theme_minimal(base_family = font_text) +
     text = element_text(color = "gray20")
   )
 
-## Plot --------------------------------------------------------------------
+# Plot ----------------------------------------------------------------------
 
 x <- seq(0, 1, length.out = 2 * 12)[-1]
-smooth <- cbind(x, scales::rescale(1 / (1 + exp(-(x * 10 - 5)))))
+smooth <- cbind(x, rescale(1 / (1 + exp(-(x * 10 - 5)))))
 
 trend_plot <- ggplot(full_series, aes(color = line_name, fill = line_name)) +
   geom_ribbon(aes(date, ymin = lo95, ymax = hi95), lwd = 0.15, alpha = 0.15) +
@@ -140,7 +142,7 @@ trend_plot <- ggplot(full_series, aes(color = line_name, fill = line_name)) +
   scale_fill_manual(values = unname(metro_cols)) +
   labs(
     title = "How many will ride the Metro tomorrow?",
-    subtitle = stringr::str_wrap(
+    subtitle = str_wrap(
       "Monthly passenger entrances on São Paulo's Metro lines (millions). Solid lines are desseasoned trends from observed data; shaded fans show forecasts with 80% and 95% prediction intervals for 2025-2026.",
       101
     ),
@@ -156,7 +158,7 @@ trend_plot <- ggplot(full_series, aes(color = line_name, fill = line_name)) +
   theme(legend.position = "none")
 
 ggsave(
-  here::here("2026", "plots", "26_trend.png"),
+  here("2026", "plots", "26_trend.png"),
   trend_plot,
   width = 8,
   height = 5,

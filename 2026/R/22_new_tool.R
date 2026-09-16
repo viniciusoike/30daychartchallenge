@@ -1,7 +1,18 @@
+# Prompt: Time series
+# New Tool -- echarts4r: São Paulo Metro ridership vs pre-pandemic baseline
+
 library(echarts4r)
 library(dplyr)
-library(metrosp)
-library(trendseries)
+
+import::from(here, here)
+import::from(metrosp, passengers_entrance)
+import::from(trendseries, augment_trends)
+import::from(jsonlite, toJSON)
+import::from(stringr, str_wrap)
+import::from(htmlwidgets, saveWidget)
+import::from(webshot2, webshot)
+
+# Data --------------------------------------------------------------------
 
 sub_series <- passengers_entrance |>
   filter(
@@ -31,6 +42,8 @@ index_series <- sub_series |>
     )
   ) |>
   group_by(line_name)
+
+# Theme ---------------------------------------------------------------------
 
 echarts_theme_vini <- function(
   palette = c("#171796", "#007A5E", "#ED2E38", "#FFD525", "#874ABF", "#8F8F8C"),
@@ -96,16 +109,18 @@ echarts_theme_vini <- function(
 }
 
 e_theme_vini <- function(e, ...) {
-  theme <- jsonlite::toJSON(echarts_theme_vini(...), auto_unbox = TRUE)
-  echarts4r::e_theme_custom(e, as.character(theme), name = "custom")
+  theme <- toJSON(echarts_theme_vini(...), auto_unbox = TRUE)
+  e_theme_custom(e, as.character(theme), name = "custom")
 }
+
+# Chart ---------------------------------------------------------------------
 
 metro_chart <- e_charts(index_series, x = date) |>
   e_line(serie = trend_stl, showSymbol = FALSE, smooth = TRUE) |>
   e_tooltip(trigger = "axis") |>
   e_title(
     "Ridership on São Paulo Metro is still below Pre-pandemic levels",
-    stringr::str_wrap(
+    str_wrap(
       "Average monthly passenger entrances on the São Paulo Metro system (only business days) across lines 1 to 5. Line 15-Gray is removed from the analysis since most of its stations were inaugurated after 2020.",
       81
     ),
@@ -121,17 +136,18 @@ metro_chart <- e_charts(index_series, x = date) |>
   ) |>
   e_theme_vini()
 
-metro_chart
+# metro_chart  # interactive preview
 
-## Export ----
-htmlwidgets::saveWidget(
+# Export --------------------------------------------------------------------
+
+saveWidget(
   metro_chart,
   tmp <- tempfile(fileext = ".html"),
   selfcontained = TRUE
 )
-webshot2::webshot(
+webshot(
   tmp,
-  file = "2026/plots/22_new_tool.png",
+  file = here("2026/plots/22_new_tool.png"),
   vwidth = 800,
   vheight = 600,
   zoom = 1, # 3x for crisp, high-DPI output

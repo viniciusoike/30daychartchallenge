@@ -12,11 +12,14 @@
 
 library(dplyr)
 library(ggplot2)
-library(ggtext)
-library(scales)
 
 import::from(here, here)
 import::from(tibble, tibble)
+import::from(ggtext, element_textbox_simple)
+import::from(rbcb, get_series)
+import::from(purrr, reduce)
+import::from(RcppRoll, roll_sumr)
+import::from(ragg, agg_png)
 
 # Fonts ("EB Garamond", "Playfair Display") are installed locally and resolved
 # by name through the ragg device passed to ggsave() below — no showtext needed.
@@ -26,19 +29,19 @@ import::from(tibble, tibble)
 # BCB SGS: merchandise exports (22708) and imports (22709), monthly, current
 # US$ millions. Trailing 12-month sum annualises the series and smooths the
 # seasonal swings; log() compresses three decades of growth onto one scale.
-data_bcb <- rbcb::get_series(
+data_bcb <- get_series(
   list("export" = 22708, "import" = 22709)
 )
 
 series <- data_bcb |>
-  purrr::reduce(left_join) |>
+  reduce(left_join) |>
   rename(
     exports = export,
     imports = import
   ) |>
   mutate(
-    exports = RcppRoll::roll_sumr(exports, n = 12, align = "right"),
-    imports = RcppRoll::roll_sumr(imports, n = 12, align = "right"),
+    exports = roll_sumr(exports, n = 12, align = "right"),
+    imports = roll_sumr(imports, n = 12, align = "right"),
     exports = log(exports),
     imports = log(imports)
   ) |>
@@ -220,5 +223,5 @@ ggsave(
   width = 8,
   height = 5,
   dpi = 400,
-  device = ragg::agg_png
+  device = agg_png
 )

@@ -8,25 +8,27 @@
 
 library(dplyr)
 library(ggplot2)
-library(ggtext)
-library(showtext)
-library(forecast)
+
+import::from(here, here)
 import::from(lubridate, make_date)
+import::from(tibble, tibble, as_tibble)
+import::from(forecast, nnetar, forecast)
+import::from(ggtext, element_textbox_simple)
+import::from(glue, glue)
+import::from(ragg, agg_png)
+
+# Fonts ("Roboto Slab", "Lato") are installed locally and resolved by name
+# through the ragg device passed to ggsave() below — no showtext needed.
 
 # Add n calendar months to a Date (avoids extra lubridate exports).
 add_months <- function(d, n) seq(d, by = "month", length.out = n + 1)[n + 1]
-
-font_add_google("Roboto Slab", "title_font")
-font_add_google("Lato", "body_font")
-showtext_auto()
-showtext_opts(dpi = 300)
 
 # Data ------------------------------------------------------------------------
 # Monthly mean total sunspot number, WDC-SILSO (Royal Observatory of Belgium).
 # Cache locally under the gitignored 2026/data/ tree; re-download if absent.
 
 url <- "https://www.sidc.be/SILSO/DATA/SN_m_tot_V2.0.csv"
-data_dir <- here::here("2026/data/space")
+data_dir <- here("2026/data/space")
 csv_path <- file.path(data_dir, "SN_m_tot_V2.0.csv")
 
 if (!file.exists(csv_path)) {
@@ -65,7 +67,7 @@ dat <- dat |>
 
 set.seed(42)
 ts_y <- ts(dat$sunspot, frequency = 12, start = c(dat$year[1], dat$month[1]))
-fit <- nnetar(ts_y, lambda = 0.5)
+fit <- nnetar(ts_y)
 fc <- forecast(fit, h = 180, PI = TRUE, npaths = 500)
 
 last_date <- max(dat$date)
@@ -91,20 +93,21 @@ hist_df <- filter(dat, date >= as.Date("1900-01-01"))
 x_breaks <- seq(as.Date("1900-01-01"), as.Date("2040-01-01"), by = "20 years")
 
 make_plot <- function(pal) {
-  note <- tibble(
-    x = as.Date("1912-01-01"),
-    y = 300,
-    label = glue::glue(
-      "<b style='color:{pal$fc}'>80% / 95%</b> prediction intervals widen with the horizon"
-    )
-  )
-  fc_lab <- tibble(
-    x = max(fc_df$date),
-    y = 298,
-    label = glue::glue(
-      "<b style='color:{pal$fc}'>Neural-network<br>forecast</b><br>NNAR(35,1,18)"
-    )
-  )
+  # Annotation data for the richtext layers commented out below.
+  # note <- tibble(
+  #   x = as.Date("1912-01-01"),
+  #   y = 300,
+  #   label = glue(
+  #     "<b style='color:{pal$fc}'>80% / 95%</b> prediction intervals widen with the horizon"
+  #   )
+  # )
+  # fc_lab <- tibble(
+  #   x = max(fc_df$date),
+  #   y = 298,
+  #   label = glue(
+  #     "<b style='color:{pal$fc}'>Neural-network<br>forecast</b><br>NNAR(35,1,18)"
+  #   )
+  # )
 
   ggplot() +
     geom_ribbon(
@@ -147,12 +150,12 @@ make_plot <- function(pal) {
     geom_hline(yintercept = 0, linewidth = 0.5, color = pal$ink_soft) +
     # geom_richtext(
     #   data = note, aes(x, y, label = label),
-    #   family = "body_font", size = 2.7, hjust = 0,
+    #   family = "Lato", size = 2.7, hjust = 0,
     #   color = pal$ink, fill = NA, label.color = NA
     # ) +
     # geom_richtext(
     #   data = fc_lab, aes(x, y, label = label),
-    #   family = "body_font", size = 2.7, hjust = 1, vjust = 1, lineheight = 1.1,
+    #   family = "Lato", size = 2.7, hjust = 1, vjust = 1, lineheight = 1.1,
     #   color = pal$ink, fill = NA, label.color = NA
     # ) +
     scale_x_date(
@@ -163,7 +166,7 @@ make_plot <- function(pal) {
     scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
     labs(
       title = "The Sun's uncertain future",
-      subtitle = glue::glue(
+      subtitle = glue(
         "A neural network trained on 275 years of monthly sunspot counts projects ",
         "Solar Cycle 25's decline and the rise of Cycle 26. The further it looks, ",
         "the less it knows — the <b style='color:{pal$fc}'>shaded bands</b> ",
@@ -177,7 +180,7 @@ make_plot <- function(pal) {
         "80% / 95% prediction intervals. • @viniciusoike"
       )
     ) +
-    theme_minimal(base_family = "body_font") +
+    theme_minimal(base_family = "Lato") +
     theme(
       plot.margin = margin(15, 12, 8, 12),
       plot.background = element_rect(fill = pal$bg, color = NA),
@@ -186,13 +189,13 @@ make_plot <- function(pal) {
       panel.grid.major = element_line(color = pal$grid, linewidth = 0.3),
       panel.grid.major.x = element_blank(),
       plot.title = element_text(
-        family = "title_font",
+        family = "Roboto Slab",
         face = "bold",
         size = 21,
         color = pal$ink
       ),
       plot.subtitle = element_textbox_simple(
-        family = "body_font",
+        family = "Lato",
         size = 9.5,
         color = pal$ink_soft,
         lineheight = 1.25,
@@ -231,17 +234,19 @@ pal_dark <- list(
 # Save ------------------------------------------------------------------------
 
 ggsave(
-  here::here("2026/plots/25_space.png"),
+  here("2026/plots/25_space.png"),
   plot = make_plot(pal_light),
   width = 9,
   height = 5,
-  dpi = 300
+  dpi = 300,
+  device = agg_png
 )
 
 ggsave(
-  here::here("2026/plots/25_space_dark.png"),
+  here("2026/plots/25_space_dark.png"),
   plot = make_plot(pal_dark),
   width = 9,
   height = 5,
-  dpi = 300
+  dpi = 300,
+  device = agg_png
 )

@@ -4,10 +4,20 @@
 # is clipped to a circle around the city centre. Buffer/circle machinery is
 # adapted from 2025/R/03_circles.R; map theming from 2026/R/13_ecossystems.R.
 
-library(tidyverse)
+library(dplyr)
+library(ggplot2)
 library(sf)
 library(patchwork)
+
 import::from(here, here)
+import::from(readr, read_delim, cols, col_character)
+import::from(stringr, str_sub)
+import::from(tibble, tribble)
+import::from(ggthemes, theme_map)
+
+# The buffer/OSM/cache helpers below keep their pkg:: qualifiers (sf, osmdata,
+# geobr, rmapshaper, callr): osm_worker() runs in a callr child process where
+# nothing is attached, and the rest mirrors 2025/R/03_circles.R.
 
 sf::sf_use_s2(FALSE)
 options(timeout = 600)
@@ -316,8 +326,8 @@ prepare_city <- function(code) {
   city <- build_city(code)
 
   tracts <- city$shp |>
-    dplyr::group_by(decile) |>
-    dplyr::summarise(.groups = "drop") |>
+    group_by(decile) |>
+    summarise(.groups = "drop") |>
     simplify_layer()
 
   list(
@@ -331,7 +341,7 @@ prepare_city <- function(code) {
 
 # Per-city plot -----------------------------------------------------------
 
-theme_circ <- ggthemes::theme_map() +
+theme_circ <- theme_map() +
   theme_sub_plot(
     title = element_text(size = 13, family = "Georgia", hjust = 0.5),
     background = element_rect(fill = bg, color = bg),
@@ -371,8 +381,8 @@ palette_scale <- scale_fill_brewer(
 
 plot_city <- function(city) {
   # Tracts first: grey (no income data) below, then the coloured deciles.
-  na_tracts <- dplyr::filter(city$tracts, is.na(decile))
-  data_tracts <- dplyr::filter(city$tracts, !is.na(decile))
+  na_tracts <- filter(city$tracts, is.na(decile))
+  data_tracts <- filter(city$tracts, !is.na(decile))
 
   p <- ggplot()
   if (nrow(na_tracts) > 0) {

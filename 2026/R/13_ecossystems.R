@@ -1,21 +1,36 @@
-library(geobr)
+# Prompt: Relationships
+# Ecosystems -- metro-region job ecosystems: share of employed residents who
+# work in another municipality (IBGE Census 2022, SIDRA table 10329).
+
 library(sf)
 library(dplyr)
 library(ggplot2)
 library(patchwork)
 
+import::from(here, here)
+import::from(geobr, read_metro_area, read_municipality)
+import::from(httr, GET, content)
+import::from(jsonlite, fromJSON)
+import::from(janitor, make_clean_names)
+import::from(tibble, tibble)
+import::from(tidyr, pivot_wider)
+import::from(stringi, stri_trans_general)
+import::from(stringr, str_to_lower, str_to_snake)
+import::from(nngeo, st_remove_holes)
+import::from(ggthemes, theme_map)
+
 offwhite <- "#f8fbf8"
 
-# Data ----
+# Data --------------------------------------------------------------------
 
 query <- "https://apisidra.ibge.gov.br/values/t/10329/n6/all/v/allxp/p/all/c469/12167,12188,79176/c2/6794/c386/9680/c2087/allxt"
 
-req <- httr::GET(query)
-raw <- httr::content(req, as = "text", encoding = "UTF-8")
-dat <- jsonlite::fromJSON(raw, simplifyDataFrame = TRUE)
+req <- GET(query)
+raw <- content(req, as = "text", encoding = "UTF-8")
+dat <- fromJSON(raw, simplifyDataFrame = TRUE)
 
 deslocamentos <- tibble(dat[-1, ])
-names(deslocamentos) <- janitor::make_clean_names(
+names(deslocamentos) <- make_clean_names(
   as.character(
     dat[1, ]
   )
@@ -39,9 +54,9 @@ deslocamentos <- deslocamentos |>
   )
 
 str_simplify <- function(x) {
-  y <- stringi::stri_trans_general(x, "Latin-ASCII")
-  y <- stringr::str_to_lower(y)
-  y <- stringr::str_to_snake(y)
+  y <- stri_trans_general(x, "Latin-ASCII")
+  y <- str_to_lower(y)
+  y <- str_to_snake(y)
   return(y)
 }
 
@@ -53,7 +68,7 @@ share_workplace <- deslocamentos |>
   filter(workplace != "Total") |>
   mutate(share = total / sum(total) * 100, .by = "code_muni") |>
   mutate(workplace = str_simplify(workplace)) |>
-  tidyr::pivot_wider(
+  pivot_wider(
     id_cols = "code_muni",
     names_from = "workplace",
     values_from = "share"
@@ -62,9 +77,9 @@ share_workplace <- deslocamentos |>
 rms <- read_metro_area(2018)
 munis <- read_municipality(2022)
 
-# Lookups & theme ----
+# Lookups & theme ----------------------------------------------------------
 
-theme_plot_map <- ggthemes::theme_map() +
+theme_plot_map <- theme_map() +
   theme_sub_plot(
     title = element_text(size = 14, family = "Georgia", hjust = 0.5),
     background = element_rect(fill = offwhite, color = offwhite),
@@ -115,7 +130,7 @@ rm_names <- c(
   "poa" = "Rm Porto Alegre"
 )
 
-# Functions ----
+# Functions -----------------------------------------------------------------
 
 prepare_metro <- function(key) {
   rm_name <- rm_names[[key]]
@@ -129,7 +144,7 @@ prepare_metro <- function(key) {
     filter(name_metro == rm_name) |>
     summarise(geometry = st_union(geometry)) |>
     st_transform(crs = 31983) |>
-    nngeo::st_remove_holes(max_area = 0) |>
+    st_remove_holes(max_area = 0) |>
     st_transform(crs = 4326)
 
   shapes <- munis |>
@@ -165,7 +180,7 @@ build_metro_map <- function(
     theme_plot_map
 }
 
-# Plots ----
+# Plots ---------------------------------------------------------------------
 
 plots <- lapply(names(city_names), build_metro_map)
 
@@ -205,7 +220,7 @@ final <- wrap_plots(plots, ncol = 2) +
   )
 
 ggsave(
-  here::here("2026", "plots", "13_ecossystems.png"),
+  here("2026", "plots", "13_ecossystems.png"),
   final,
   width = 8,
   height = 9,
