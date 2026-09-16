@@ -23,7 +23,7 @@ There is no build, test, or lint setup. The Rproj uses 2-space indent, UTF-8.
 
 Each day's script is run on its own, top to bottom, from the project root:
 
-```r
+``` r
 source("2026/R/29_monochrome.R")   # or run interactively in RStudio
 ```
 
@@ -44,4 +44,4 @@ Paths are resolved with `here::here(...)` or project-root-relative strings (`"20
 
 ## Code style (from global user prefs)
 
-Use RStudio section headers — `# Section ----`, `## Subsection ----` with trailing dashes filling to ~76 chars. No box-style `====` borders. Keep comments concise.
+Use RStudio section headers — `# Section ----`, `## Subsection ----` with trailing dashes filling to \~76 chars. No box-style `====` borders. Keep comments concise.
