@@ -1,7 +1,7 @@
 # Comparisons
 
 01. [X] Part-to-Whole - Censo Mobilidade
-02. Pictogram - dist. domicilios
+02. [X] Pictogram - dist. domicilios
 03. [X] Mosaic - GDP
 04. [X] Slope - PAM
 05. [X] Experimental - Censo Mobilidade
