@@ -3,15 +3,15 @@
 
 library(dplyr)
 library(ggplot2)
+library(ggtext)
+library(readr)
 
 import::from(tidyr, pivot_wider)
 import::from(stringr, str_glue)
-import::from(ggtext, element_markdown, element_textbox_simple)
 import::from(countrycode, countrycode)
 import::from(fs, dir_create, path)
 import::from(scales, number)
 import::from(forcats, fct_reorder)
-import::from(readr, read_delim, locale, write_csv)
 import::from(janitor, make_clean_names)
 import::from(here, here)
 
@@ -198,65 +198,101 @@ ggsave(
 
 # Exploratory (not run) ---------------------------------------------------
 
-# d <- plot_data |>
-#   select(country, label_y, score_2022, score_2026) |>
-#   pivot_longer(
-#     cols = c(score_2022, score_2026),
-#     names_sep = "_",
-#     names_to = c("variable", "year")
-#   ) |>
-#   mutate(year = factor(year))
+d <- plot_data |>
+  select(country, label_y, score_2022, score_2026) |>
+  tidyr::pivot_longer(
+    cols = c(score_2022, score_2026),
+    names_sep = "_",
+    names_to = c("variable", "year")
+  ) |>
+  mutate(year = factor(year))
 
-# ggplot(d, aes(value, label_y)) +
-#   geom_line(color = "gray55", lwd = 1.2) +
-#   geom_point(aes(fill = year), shape = 21, size = 2) +
-#   scale_x_continuous(
-#     limits = c(20, 92),
-#     breaks = seq(20, 90, 10),
-#     expand = expansion(mult = c(0.02, 0.04))
-#   ) +
-#   scale_fill_manual(name = NULL, values = c("#ffffff", col_up)) +
-#   labs(
-#     title = "Press freedom is sliding across Latin America",
-#     caption = paste(
-#       "Source: Reporters Without Borders — World Press Freedom Index",
-#       "(2022, 2026). Comparison limited to RSF's post-2022 methodology.",
-#       "• @viniciusoike"
-#     ),
-#     x = NULL,
-#     y = NULL,
-#     color = NULL
-#   ) +
-#   theme_plot +
-#   theme(
-#     panel.grid.major.y = element_line(linewidth = 0.2, linetype = 2),
-#     legend.position = "top",
-#     legend.justification = "left",
-#     legend.margin = margin(0, 0, 0, 0),
-#     axis.text.y = element_markdown(color = "gray20"),
-#     axis.text.y.left = element_markdown(color = "gray20")
-#   )
+colors <- unname(ekioplot::ekio_pal("blue")[c(3, 8)])
 
-# long_data <- plot_data |>
-#   select(iso, is_brazil, score_2022:score_2026) |>
-#   pivot_longer(
-#     cols = score_2022:score_2026,
-#     names_to = c("variable", "year"),
-#     names_sep = "_",
-#     values_to = "score"
-#   ) |>
-#   mutate(year = as.numeric(year))
+d <- d |>
+  mutate(
+    text_position = case_when(
+      value == min(value) ~ value - 2.5,
+      value == max(value) ~ value + 2
+    ),
+    .by = "country"
+  )
 
-# changes <- long_data |>
-#   arrange(year, iso) |>
-#   mutate(
-#     chg = score - lag(score),
-#     .by = "iso"
-#   ) |>
-#   mutate(
-#     chg_norm = chg / max(chg, na.rm = TRUE),
-#     .by = "year"
-#   )
+d |>
+  group_by(country) |>
+  arrange(year, .by_group = TRUE) |>
+  summarise(chg = last(value) - first(value))
 
-# ggplot(long_data, aes(year, chg_norm)) +
-#   geom_col()
+ggplot(d, aes(value, label_y)) +
+  geom_line(color = "gray55", lwd = 1) +
+  geom_point(aes(fill = year), shape = 21, size = 3) +
+  geom_text(aes(x = text_position, label = round(value))) +
+  scale_x_continuous(
+    limits = c(20, 92),
+    breaks = seq(20, 90, 10),
+    expand = expansion(mult = c(0.02, 0.04))
+  ) +
+  scale_fill_manual(values = colors) +
+  labs(
+    title = "Press freedom is sliding across Latin America. Brazil has ",
+    caption = "Source: Reporters Without Borders (World Press Freedom Index, 2022, 2026) • @viniciusoike",
+    x = NULL,
+    y = NULL,
+    color = NULL
+  ) +
+  theme_minimal(base_family = font_text) +
+  theme_sub_plot(
+    title = element_text(size = 16, family = "Georgia"),
+    title.position = "plot",
+    subtitle = element_textbox_simple(
+      size = 10,
+      color = "gray40",
+      margin = margin(b = 12)
+    ),
+    caption = element_text(size = 8, color = "gray60"),
+    caption.position = "plot",
+    margin = margin(15, 14, 10, 10),
+    background = element_rect(fill = offwhite, color = offwhite)
+  ) +
+  theme_sub_panel(
+    grid.minor = element_blank(),
+    grid.major.y = element_line(linewidth = 0.2, linetype = 2),
+    background = element_rect(fill = offwhite, color = offwhite)
+  ) +
+  theme_sub_axis(
+    ticks = element_line(color = "gray20"),
+    line = element_line(color = "gray20", linewidth = 0.5),
+  ) +
+  theme_sub_axis_x(
+    text = element_text(color = "gray20")
+  ) +
+  theme_sub_legend(
+    position = "top",
+    justification = "left",
+    margin = margin(0, 0, 0, 0)
+  ) +
+  theme(axis.text.y.left = element_markdown(color = "gray20"))
+
+long_data <- plot_data |>
+  select(iso, is_brazil, score_2022:score_2026) |>
+  pivot_longer(
+    cols = score_2022:score_2026,
+    names_to = c("variable", "year"),
+    names_sep = "_",
+    values_to = "score"
+  ) |>
+  mutate(year = as.numeric(year))
+
+changes <- long_data |>
+  arrange(year, iso) |>
+  mutate(
+    chg = score - lag(score),
+    .by = "iso"
+  ) |>
+  mutate(
+    chg_norm = chg / max(chg, na.rm = TRUE),
+    .by = "year"
+  )
+
+ggplot(long_data, aes(year, chg_norm)) +
+  geom_col()

@@ -1,17 +1,39 @@
+# Prompt: Time series
+# Evolution -- Brazil's total crop harvest area, 1974-2024 (IBGE PAM)
+
 library(dplyr)
 library(ggplot2)
-library(ggflags)
-library(ggtext)
 
-import::from(tidyr, pivot_wider)
+import::from(here, here)
+import::from(janitor, clean_names)
+import::from(readr, write_rds)
+import::from(tibble, tibble, as_tibble)
+import::from(ggflags, geom_flag)
+import::from(ggtext, geom_richtext)
+import::from(scales, label_number)
 
-api_query <- "/t/5457/n1/all/v/allxp/p/all/c782/all"
+# Data --------------------------------------------------------------------
 
-dat <- sidrar::get_sidra(api = api_query)
+api_query <- "https://apisidra.ibge.gov.br/values/t/5457/n1/all/v/allxp/p/all/c782/all"
 
-dat <- dat |>
+api_query <- paste0(
+  "https://servicodados.ibge.gov.br/api/v3/agregados/5457/periodos/all/variaveis/allxp",
+  "?localidades=N1[all]&classificacao=782[all]&view=flat"
+)
+
+req <- httr::GET(api_query, httr::user_agent("Mozilla/5.0"))
+httr::stop_for_status(req, task = "download PAM table 5457 from SIDRA")
+
+raw <- jsonlite::fromJSON(
+  httr::content(req, as = "text", encoding = "UTF-8"),
+  simplifyDataFrame = TRUE
+)
+
+# First row holds the column labels (Ano, Variável, Valor, ...); the rest is data
+dat <- raw[-1, ] |>
+  setNames(unlist(raw[1, ])) |>
   as_tibble() |>
-  janitor::clean_names()
+  clean_names()
 
 brazil <- dat |>
   select(
@@ -21,9 +43,13 @@ brazil <- dat |>
     name_crop = produto_das_lavouras_temporarias_e_permanentes,
     value = valor
   ) |>
-  mutate(year = as.numeric(year))
+  # SIDRA codes missing values as "-", "..", "..." or "X"
+  mutate(
+    year = as.numeric(year),
+    value = as.numeric(if_else(value %in% c("-", "..", "...", "X"), NA, value))
+  )
 
-readr::write_rds(brazil, "2026/data/agriculture/pam_br.rds")
+write_rds(brazil, here("2026/data/agriculture/pam_br.rds"))
 
 brazil_area <- brazil |>
   filter(name_crop == "Total", variable == "Área colhida")
@@ -40,63 +66,68 @@ brazil_area <- brazil |>
 #     values_from = "name_crop"
 #   )
 
-crops_selected <- c(
-  "Milho (em grão)",
-  "Soja (em grão)",
-  "Trigo (em grão)",
-  "Arroz (em casca)",
-  "Café (em grão) Total",
-  "Cana-de-açúcar",
-  "Algodão herbáceo (em caroço)"
-)
+# Stale: crop-level labels from an earlier multi-crop version of the chart;
+# the final plot only uses brazil_area (the "Total" series).
+# crops_selected <- c(
+#   "Milho (em grão)",
+#   "Soja (em grão)",
+#   "Trigo (em grão)",
+#   "Arroz (em casca)",
+#   "Café (em grão) Total",
+#   "Cana-de-açúcar",
+#   "Algodão herbáceo (em caroço)"
+# )
+#
+# crops_labels <- c(
+#   "Corn",
+#   "Soybeans",
+#   "Wheat",
+#   "Rice",
+#   "Coffee",
+#   "Sugar cane",
+#   "Cotton"
+# )
+#
+# crops_labels <- setNames(crops_labels, crops_selected)
+#
+# brazil <- brazil |>
+#   mutate(
+#     crop_label = case_when(
+#       name_crop %in% crops_selected ~ crops_labels[name_crop],
+#       name_crop == "Total" ~ "Total",
+#       TRUE ~ "Other"
+#     )
+#   )
 
-crops_labels <- c(
-  "Corn",
-  "Soybeans",
-  "Wheat",
-  "Rice",
-  "Coffee",
-  "Sugar cane",
-  "Cotton"
-)
+# Annotation data ----------------------------------------------------------
 
-crops_labels <- setNames(crops_labels, crops_selected)
-
-crops_labels["Arroz (em casca)"]
-
-brazil <- brazil |>
-  mutate(
-    crop_label = case_when(
-      name_crop %in% crops_selected ~ crops_labels[name_crop],
-      name_crop == "Total" ~ "Total",
-      TRUE ~ "Other"
-    )
-  )
-
-# Total area
+# https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_area
 
 country_sizes <- tibble(
-  country = c("France", "Spain", "Pakistan"),
-  size = c(643801, 505370, 882363) * 1e2,
-  code = c("fr", "es", "pk"),
+  country = c("France", "Spain", "Nigeria"),
+  size = c(640427, 498980, 910770) * 1e2,
+  code = c("fr", "es", "ng"),
   label = c(
-    "<b>France</b><br>64.4M Ha",
-    "<b>Spain</b><br>50.5M Ha",
-    "<b>Pakistan</b><br>88.2M Ha"
+    "<b>France</b><br>64.0M Ha",
+    "<b>Spain</b><br>49.9M Ha",
+    "<b>Nigeria</b><br>91.1M Ha"
   )
 )
 
 df_labels <- tibble(
-  x = c(2000, 2022),
+  x = c(2000, 2023),
   label = c(
     "Just before the Commodity Boom,<br>in the early 2000's, Brazil's total crop<br>harvest area hovered around<br> <b>50 million Ha</b>: roughly the size of Spain.",
-    "By 2022, harvest area had grown<br>to over <b>90 M Ha</b>, surpassing<br>the total size of Pakistan."
+    "By 2023, harvest area had grown<br>to over <b>95 M Ha</b>, surpassing<br>the land area of Nigeria."
   )
 )
 
 df_labels <- left_join(df_labels, brazil_area, by = join_by(x == year))
 
+# Theme ---------------------------------------------------------------------
+
 color_main <- "#2c7b46"
+offwhite <- "#f8fbf8"
 
 year_breaks <- c(1974, seq(1980, 2020, 10), 2024)
 
@@ -121,6 +152,8 @@ theme_plot <- theme_minimal(base_family = "Roboto Slab") +
   theme_sub_axis_y(
     title = element_blank()
   )
+
+# Plot ----------------------------------------------------------------------
 
 base_plot <- ggplot(brazil_area, aes(year, value)) +
   # Points (all data), dimmed
@@ -183,7 +216,7 @@ plot_annotations <- base_plot + # Horizontal lines indicating country sizes
   # Narrative data labels
   geom_richtext(
     data = df_labels,
-    aes(x = c(2001.5, 2008), y = c(45, 93) * 1e6, label = label),
+    aes(x = c(2001.5, 2009.5), y = c(44, 96) * 1e6, label = label),
     size = 2.5,
     hjust = 0,
     family = "Roboto"
@@ -196,20 +229,20 @@ final_plot <- plot_annotations +
   ) +
   scale_y_continuous(
     breaks = seq(4, 10, 1) * 1e7,
-    labels = scales::label_number(scale = 1e-6),
+    labels = label_number(scale = 1e-6),
     limits = c(NA, 10 * 1e7)
   ) +
   labs(
-    title = "Sowing the crops: Brazil harvests over a Pakistan per year",
+    title = "Sowing the crops: Brazil harvests over a Nigeria per year",
     subtitle = "Total crop harvest area (temporary and permanent cultures) in Brazil, 1974-2024.",
-    caption = "Source: IBGE (PAM, 1974-2024) • @viniciusoike",
+    caption = "Source: IBGE (PAM, 1974-2024). Country sizes are total land sizes (excluding inland water) • @viniciusoike",
     x = NULL,
     y = "Hectares (millions)"
   ) +
   theme_plot
 
 ggsave(
-  "2026/plots/19_evolution.png",
+  here("2026/plots/19_evolution.png"),
   final_plot,
   width = 8,
   height = 5,
