@@ -164,7 +164,7 @@ p <- ggplot(mapping = aes(x = date)) +
       "All confidently project a normal 2020 (shaded bands = 95% intervals). ",
       "The <b style='color:{col_actual}'>actual</b> output plunges straight through every forecast as COVID shutters the plants."
     ),
-    caption = "Source: Brazilian Central Bank (BCB) / Anfavea — monthly vehicle production (units). • @viniciusoike",
+    caption = "Source: Brazilian Central Bank (BCB) / Anfavea — monthly vehicle production (units) • @viniciusoike",
     x = NULL,
     y = NULL
   ) +

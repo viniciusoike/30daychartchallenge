@@ -231,7 +231,7 @@ panel <- ggplot(dat, aes(x = share, weight = pop, fill = mode, color = mode)) +
     subtitle = "Distribution of municipal modal share by city size in Brazil (2022). Each curve is the population-weighted\ndensity of cities; rows are city-size classes, columns are the main commute mode.",
     x = NULL,
     y = NULL,
-    caption = "Source: IBGE (Census, 2022) - main transport mode when commuting to work or school. @viniciusoike\nWalking counts trips on foot only (cycling excluded); 'Car' includes cabs; 'Motorcycle' includes mototaxis;\n'Public transit' includes buses, trains/metros, shared boats, and informal public transport (e.g. vans)."
+    caption = "Source: IBGE (Census, 2022) - main transport mode when commuting to work or school • @viniciusoike\nWalking counts trips on foot only (cycling excluded); 'Car' includes cabs; 'Motorcycle' includes mototaxis;\n'Public transit' includes buses, trains/metros, shared boats, and informal public transport (e.g. vans)."
   ) +
   theme_plot +
   theme(strip.background = element_rect(fill = "#224b5e"))

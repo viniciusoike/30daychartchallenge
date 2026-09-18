@@ -74,7 +74,7 @@ p1 <- ggplot(total_area, aes(year, value, fill = is_fcast)) +
     subtitle = "ÁREA COLHIDA DE LAVOURAS, MILHÕES DE HECTARES, (1974-1980)\nVALORES PREVISTOS PARA 1981-1982",
     x = NULL,
     y = NULL,
-    caption = "FONTE: IBGE (PESQUISA AGRÍCOLA MUNICIPAL)"
+    caption = "FONTE: IBGE (PESQUISA AGRÍCOLA MUNICIPAL) • @viniciusoike"
   ) +
   theme_plot
 
@@ -167,7 +167,7 @@ p2 <- ggplot(
     subtitle = "ÁREA COLHIDA DE LAVOURAS, MILHÕES DE HECTARES (1974-1980)",
     x = NULL,
     y = NULL,
-    caption = "FONTE: IBGE (PESQUISA AGRÍCOLA MUNICIPAL)"
+    caption = "FONTE: IBGE (PESQUISA AGRÍCOLA MUNICIPAL) • @viniciusoike"
   ) +
   theme_plot +
   theme(
@@ -204,7 +204,7 @@ p3 <- ggplot(grouped_value, aes(year, total, fill = crop_trunc)) +
     subtitle = "BILHÕES DE CRUZEIROS, NOMINAL (1974-1980)",
     x = NULL,
     y = NULL,
-    caption = "FONTE: IBGE (PESQUISA AGRÍCOLA MUNICIPAL)"
+    caption = "FONTE: IBGE (PESQUISA AGRÍCOLA MUNICIPAL) • @viniciusoike"
   ) +
   theme_plot +
   theme(

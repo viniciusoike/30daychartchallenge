@@ -260,7 +260,7 @@ panel <- (p_map | p_ridge) +
   plot_annotation(
     title = "Brazil lives close to sea level",
     subtitle = "Where Brazilians live, by altitude. The map shows terrain elevation; each ridge is the population-weighted distribution\nof municipal-seat elevations within a macro-region. The Sudeste and Centro-Oeste planalto pull the country upward.",
-    caption = "Source: IBGE (municipal population estimate, 2025) and AWS Terrain Tiles / SRTM elevation sampled at municipal seats. @viniciusoike\nRidges weighted by municipal population; x-axis capped at 1.500 m, above which less than 1% of Brazilians live.",
+    caption = "Source: IBGE (municipal population estimate, 2025) and AWS Terrain Tiles / SRTM elevation sampled at municipal seats • @viniciusoike\nRidges weighted by municipal population; x-axis capped at 1.500 m, above which less than 1% of Brazilians live.",
     theme = theme(
       plot.background = element_rect(fill = offwhite, color = offwhite),
       plot.margin = margin(12, 14, 8, 12),

@@ -172,7 +172,7 @@ dumbbell <- ggplot(plot_data, aes(y = label_y)) +
     ),
     caption = paste(
       "Source: Reporters Without Borders — World Press Freedom Index",
-      "(2022, 2026). Comparison limited to RSF's post-2022 methodology.",
+      "(2022, 2026). Comparison limited to RSF's post-2022 methodology",
       "• @viniciusoike"
     ),
     x = NULL,

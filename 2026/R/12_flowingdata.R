@@ -190,7 +190,7 @@ panel <- ggplot(dots, aes(x = rem, fill = sex, color = sex)) +
     title = "The years you have left, probably",
     subtitle = "For a Brazilian alive today, each panel shows 100 equally-likely lives — one dot per possible number of remaining\nyears. Dashed line marks the median. As you survive longer, the cloud shifts left and tightens; women's runs a bit longer.",
     x = "More years of life",
-    caption = "Source: IBGE, Tábuas Completas de Mortalidade (2022). Quantile dotplot of remaining lifespan; the 90+ age group is closed with a constant-hazard tail. @viniciusoike\nA tribute to Nathan Yau's \"Years You Have Left to Live, Probably\" (FlowingData, 2015)."
+    caption = "Source: IBGE, Tábuas Completas de Mortalidade (2022). Quantile dotplot of remaining lifespan; the 90+ age group is closed with a constant-hazard tail • @viniciusoike\nA tribute to Nathan Yau's \"Years You Have Left to Live, Probably\" (FlowingData, 2015)."
   ) +
   theme_plot
 

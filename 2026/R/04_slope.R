@@ -207,7 +207,7 @@ slope_plot <- ggplot(
       "Annual road-traffic deaths, 1980 vs 2019 in absolute numbers. Britain and Japan cut theirs by ~70%. Brazil (+56%) and Egypt (+137%) drove the other way.",
       111
     ),
-    caption = "Source: WHO Mortality Database.",
+    caption = "Source: WHO Mortality Database • @viniciusoike",
     x = NULL,
     y = NULL
   ) +

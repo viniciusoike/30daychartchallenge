@@ -149,7 +149,7 @@ plot_final <- ggplot(urban_series, aes(year, value)) +
     title = "A Giant Leap (for some more than others)",
     subtitle = "Share of total population living in urban areas, based on each country's national definition (historical estimates).",
     caption = str_wrap(
-      "Source: OWID (United Nations Department of Economic and Social Affairs, Population Division (2025) – with major processing by Our World in Data (OWID) • @viniciusoike",
+      "Source: OWID (United Nations Department of Economic and Social Affairs, Population Division (2025) – with major processing by Our World in Data (OWID)) • @viniciusoike",
       width = 91
     ),
     x = NULL,
@@ -224,7 +224,7 @@ plot_final_pt <- ggplot(urban_series, aes(year, value)) +
     title = "O Enorme Salto da Urbanização",
     subtitle = "Percentual da população vivendo em áreas urbanas, baseado na definição de cada país (estimativas históricas).",
     caption = str_wrap(
-      "Fonte: ODIHR (Nações Unidas, Divisão de População (2025) – com processamento por Our World in Data (OWID) • @viniciusoike",
+      "Fonte: ODIHR (Nações Unidas, Divisão de População (2025) – com processamento por Our World in Data (OWID)) • @viniciusoike",
       width = 91
     ),
     x = NULL,
