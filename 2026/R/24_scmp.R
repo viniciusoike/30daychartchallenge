@@ -346,7 +346,7 @@ p_debt <- ggplot(debt_total, aes(date, value)) +
   ) +
   labs(
     subtitle = "Household debt to income, % Households gross disposable income",
-    caption = "Source: Brazilian Central Bank (BCB) — household debt, household debt-service ratio and Selic rate. • @viniciusoike\nDebt service (seasonally adjusted) is the share of monthly household income absorbed by interest and principal."
+    caption = "Source: Brazilian Central Bank (BCB) — household debt, household debt-service ratio and Selic rate • @viniciusoike\nDebt service (seasonally adjusted) is the share of monthly household income absorbed by interest and principal."
   ) +
   theme_scmp +
   theme(

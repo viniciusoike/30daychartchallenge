@@ -105,7 +105,7 @@ mosaic <- ggplot(dat_mosaic, aes(year, countrycode)) +
   labs(
     title = "Over a Century of Booms and Busts",
     subtitle = "Year-on-year GDP per capita change for countries representing ~95% of the world economy in 2022. Values are truncated to +/- 5% to facilitate visualization.",
-    caption = "Source: Maddison Project Database. @viniciusoike"
+    caption = "Source: Maddison Project Database • @viniciusoike"
   ) +
   theme_minimal(base_family = "Lato") +
   theme_sub_plot(

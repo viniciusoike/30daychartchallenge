@@ -91,7 +91,7 @@ plot_final <- ggplot(
     subtitle = NULL,
     x = NULL,
     y = NULL,
-    caption = "Source: IBGE (Civil Record Statistics 2024)",
+    caption = "Source: IBGE (Civil Record Statistics 2024) • @viniciusoike",
     fill = "Share of annual births (%)"
   ) +
   theme_minimal(base_family = "Roboto Slab") +

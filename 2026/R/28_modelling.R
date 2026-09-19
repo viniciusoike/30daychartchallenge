@@ -193,7 +193,7 @@ p <- ggplot() +
     caption = paste0(
       "Source: IBGE, Tábuas Completas de Mortalidade (2022). Hazard ",
       "μ(x) = -log(1 - q(x)); Gompertz fit by OLS on log μ over ages ",
-      fit_lo, "-", fit_hi, ". @viniciusoike"
+      fit_lo, "-", fit_hi, " • @viniciusoike"
     )
   ) +
   theme_plot

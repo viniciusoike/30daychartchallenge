@@ -133,7 +133,7 @@ p <- ggplot(dat, aes(year, share, color = cause)) +
   labs(
     title = "Brazil's epidemiological transition",
     subtitle = "Share of all deaths by cause group, 1990&ndash;2021. The burden has shifted away from infectious, maternal and<br>neonatal causes toward the chronic, non-communicable diseases of an older, more urban population.",
-    caption = "Source: IHME, Global Burden of Disease (GBD 2021), via the Global Health Data Exchange. @viniciusoike\nCause groups are GBD Level 1; shares are of total deaths, both sexes, all ages.",
+    caption = "Source: IHME, Global Burden of Disease (GBD 2021), via the Global Health Data Exchange • @viniciusoike\nCause groups are GBD Level 1; shares are of total deaths, both sexes, all ages.",
     x = NULL,
     y = NULL
   ) +

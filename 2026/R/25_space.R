@@ -177,7 +177,7 @@ make_plot <- function(pal) {
       caption = paste0(
         "Source: WDC-SILSO, Royal Observatory of Belgium — monthly sunspot ",
         "number. Forecast: feed-forward neural net (forecast::nnetar) with ",
-        "80% / 95% prediction intervals. • @viniciusoike"
+        "80% / 95% prediction intervals • @viniciusoike"
       )
     ) +
     theme_minimal(base_family = "Lato") +
