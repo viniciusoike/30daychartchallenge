@@ -2,6 +2,8 @@
 
 My submissions for the 30 Day Chart Challenge.
 
+*Most charts were posted during the challenge. Some were refined later, and a few were added after it ended.*
+
 ---
 
 ## 2026
