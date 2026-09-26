@@ -38,7 +38,7 @@
 
 25. [X] Space - sunspots
 26. [X] Trend - Metro SPO
-27. [X] Animation - fable competing models (vehicle production, COVID stress-test)
+27. [X] Animation - hypothetical outcomes, 100 replayed futures for real home prices (IVG-R)
 28. [X] Modelling - UN WPP 2024 population fan (Brazil)
 29. [X] Monochrome - PAM
 30. Global Health Data Exchange

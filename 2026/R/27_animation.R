@@ -1,206 +1,406 @@
+# Day 27 - Animation (Uncertainties): 100 futures for Brazilian home prices --
+# A hypothetical outcome plot. Each frame replays one real five-year stretch
+# of the BCB residential price index (IVG-R, deflated by IPCA) since 2001,
+# starting from today's price. Ghost paths pile up on the left; the endpoints
+# stack into a dot histogram on the right. No model, just history on repeat.
+
 library(dplyr)
 library(ggplot2)
-library(ragg)
 library(ggtext)
-library(scales)
-library(stringr)
-library(tsibble)
-library(fable)
-library(fabletools)
-library(feasts)
-library(gganimate)
-
+library(patchwork)
 import::from(here, here)
+import::from(lubridate, years)
+import::from(ragg, agg_png)
 import::from(rbcb, get_series)
+import::from(magick, image_read, image_join, image_animate, image_write)
 
-# Data --------------------------------------------------------------------
+# Data ----------------------------------------------------------------------
+# IVG-R (SGS 21340): value of homes used as mortgage collateral.
+# IPCA (SGS 433): monthly consumer price inflation, in percent.
 
-# Brazilian monthly vehicle production (units), BCB SGS series 1373 (Anfavea).
-# Strongly seasonal, with a near-total collapse in April 2020 (COVID lockdown:
-# ~1,847 units vs. ~250k normal). Cache the raw pull alongside the other
-# (gitignored) inputs so we only hit the BCB API once.
-data_dir <- here("2026", "data", "anfavea")
-if (!dir.exists(data_dir)) dir.create(data_dir, recursive = TRUE)
-cache <- file.path(data_dir, "veh_production.rds")
+data_dir <- here("2026", "data", "ivgr")
+cache <- file.path(data_dir, "ivgr_ipca.rds")
 
 if (!file.exists(cache)) {
-  prod <- get_series(1373, start_date = "2012-01-01", as = "tibble")
-  names(prod) <- c("date", "value")
-  saveRDS(prod, cache)
+  dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
+  raw <- get_series(
+    c(ivgr = 21340, ipca = 433),
+    start_date = "2001-01-01",
+    as = "tibble"
+  )
+  saveRDS(raw, cache)
 }
-prod <- readRDS(cache)
+raw <- readRDS(cache)
 
-ts <- prod |>
-  mutate(month = yearmonth(date)) |>
-  as_tsibble(index = month)
+# Wrangle -------------------------------------------------------------------
+# Real index rebased so the latest month = 100.
 
-# Fit competing models + forecast -----------------------------------------
-
-origin <- yearmonth("2019 Dec")   # forecast origin: last month before COVID
-h <- 24                           # forecast Jan 2020 -> Dec 2021
-
-train <- ts |> filter(month <= origin)
-
-# Five deliberately different models, fit in one pipeline. They agree on a
-# "normal" 2020 and none can anticipate the lockdown.
-fit <- train |>
-  model(
-    `Seasonal naive` = SNAIVE(value),
-    ETS = ETS(value),
-    ARIMA = ARIMA(value),
-    `Linear (trend + season)` = TSLM(value ~ trend() + season())
-  )
-
-model_levels <- c("Seasonal naive", "ETS", "ARIMA", "Linear (trend + season)")
-
-fc <- fit |> forecast(h = h)
-
-# Tidy forecast: point forecast + 80/95% intervals per model.
-fc_df <- fc |>
+prices <- inner_join(raw$ivgr, raw$ipca, by = "date") |>
+  arrange(date) |>
   mutate(
-    lo95 = hilo(value, 95)$lower,
-    hi95 = hilo(value, 95)$upper,
-    lo80 = hilo(value, 80)$lower,
-    hi80 = hilo(value, 80)$upper
-  ) |>
-  as_tibble() |>
-  transmute(
-    model = factor(.model, levels = model_levels),
-    date = as.Date(month),
-    mean = .mean,
-    lo95, hi95, lo80, hi80
+    real = ivgr / cumprod(1 + ipca / 100),
+    real = 100 * real / last(real)
   )
 
-# Recent history (drawn in before the fans bloom) and the actual outcome that
-# craters through every interval.
-hist_df <- prod |> filter(date >= as.Date("2016-01-01"), date <= as.Date("2019-12-01"))
-actual_df <- prod |>
-  filter(date >= as.Date("2019-12-01"), date <= as.Date("2021-12-01"))
+origin <- max(prices$date)
+horizon <- 60
+n_futures <- 100
 
-origin_date <- as.Date("2019-12-01")
-covid_df <- prod |> filter(date == as.Date("2020-04-01"))
+history <- prices |>
+  filter(date >= origin - years(10)) |>
+  select(date, value = real)
 
-# Plot --------------------------------------------------------------------
+## Replay every five-year window --------------------------------------------
+# Window k starts at month k; its path is rescaled to start at 100 and
+# shifted forward so it begins at the forecast origin.
 
-offwhite <- "#fefefe"
-col_actual <- "#1A1A1A"
+n_windows <- nrow(prices) - horizon
 
-model_pal <- c(
-  "Seasonal naive" = "#C2410C",
-  "ETS" = "#2C7A7B",
-  "ARIMA" = "#1D4ED8",
-  "Linear (trend + season)" = "#9D174D"
-)
+windows <- lapply(seq_len(n_windows), \(k) {
+  idx <- k:(k + horizon)
+  path <- tibble(
+    step = 0:horizon,
+    date = seq(origin, by = "month", length.out = horizon + 1),
+    value = 100 * prices$real[idx] / prices$real[k],
+    replay_start = prices$date[k],
+    replay_end = prices$date[k + horizon]
+  )
+  return(path)
+})
+windows <- bind_rows(windows, .id = "window")
 
-font_text <- "Roboto Slab"
+set.seed(2027)
+draws <- sample(unique(windows$window), n_futures)
 
-theme_plot <- theme_minimal(base_family = font_text) +
+futures <- windows |>
+  filter(window %in% draws) |>
+  mutate(
+    frame = match(window, draws),
+    change = last(value) / 100 - 1,
+    direction = if_else(change > 0, "up", "down"),
+    .by = window
+  ) |>
+  arrange(frame, step)
+
+endpoints <- futures |>
+  filter(step == horizon) |>
+  arrange(frame)
+
+## Dot histogram ------------------------------------------------------------
+# Bin endpoints on the price axis; each future becomes one dot in its bin.
+# Bins are anchored at 100 so no bin mixes rises and falls.
+
+bin_width <- 5
+
+endpoints <- endpoints |>
+  mutate(bin = 100 + bin_width * (floor((value - 100) / bin_width) + 0.5)) |>
+  mutate(slot = row_number(), .by = bin)
+
+max_slot <- max(endpoints$slot)
+
+# Plot ----------------------------------------------------------------------
+
+offwhite <- "#f5f5dc"
+col_up <- "#3E6B6F"
+col_down <- "#B5523B"
+col_hist <- "#1A1A1A"
+pal <- c(up = col_up, down = col_down)
+
+font_title <- "Lora"
+font_text <- "Lato"
+
+y_limits <- c(70, 215)
+y_breaks <- seq(75, 200, 25)
+
+theme_plot <- theme_minimal(base_family = font_text, base_size = 11) +
   theme_sub_plot(
-    title = element_text(size = 16, family = "Georgia"),
-    subtitle = element_textbox_simple(size = 10, color = "gray40", margin = margin(b = 12)),
-    caption = element_text(size = 8, color = "gray60"),
-    margin = margin(15, 14, 10, 10),
-    background = element_rect(fill = offwhite, color = offwhite)
+    title = element_text(family = font_title, size = 20, color = col_hist),
+    title.position = "plot",
+    subtitle = element_textbox_simple(
+      size = 11,
+      color = "gray25",
+      lineheight = 1.15,
+      margin = margin(t = 6, b = 12)
+    ),
+    caption = element_text(size = 8, color = "gray50", hjust = 0),
+    caption.position = "plot",
+    background = element_rect(fill = offwhite, color = NA),
+    margin = margin(18, 18, 10, 18)
   ) +
   theme_sub_panel(
     grid.minor = element_blank(),
     grid.major.x = element_blank(),
-    background = element_rect(fill = offwhite, color = offwhite)
+    grid.major.y = element_line(color = "gray85", linewidth = 0.3)
   ) +
-  theme_sub_legend(
-    position = "bottom",
-    title = element_blank()
-  )
+  theme_sub_axis_bottom(
+    text = element_text(color = "gray35"),
+    line = element_line(color = "gray30", linewidth = 0.4)
+  ) +
+  theme_sub_axis_left(text = element_text(color = "gray35")) +
+  theme(legend.position = "none")
 
-p <- ggplot(mapping = aes(x = date)) +
-  # Forecast origin marker
-  geom_vline(xintercept = origin_date, linetype = "dashed", color = "gray70", linewidth = 0.4) +
-  # Per-model 95% uncertainty fans
-  geom_ribbon(
-    data = fc_df,
-    aes(ymin = lo95, ymax = hi95, fill = model, group = model),
-    alpha = 0.12
-  ) +
-  # Recent history
-  geom_line(data = hist_df, aes(y = value), color = "gray45", linewidth = 0.7) +
-  # Per-model point forecasts
-  geom_line(
-    data = fc_df,
-    aes(y = mean, color = model, group = model),
-    linewidth = 0.8
-  ) +
-  # The actual outcome that craters through every fan
-  geom_line(data = actual_df, aes(y = value), color = col_actual, linewidth = 1.1) +
-  geom_point(
-    data = covid_df, aes(y = value),
-    color = col_actual, fill = "#D7282F", shape = 21, size = 3, stroke = 0.8
-  ) +
-  annotate(
-    "richtext", x = as.Date("2020-04-01"), y = 38000, vjust = 1, hjust = 0.1,
-    label = "<b>COVID lockdown</b><br>Apr 2020: 1,847 units",
-    family = font_text, size = 2.9, color = col_actual, fill = NA, label.color = NA
-  ) +
-  annotate(
-    "text", x = origin_date, y = 360000, hjust = 1.03, vjust = 1,
-    label = "Forecast origin\nDec 2019",
-    family = font_text, size = 2.7, color = "gray45", lineheight = 0.95
-  ) +
-  scale_x_date(
-    breaks = as.Date(paste0(seq(2016, 2021, 1), "-01-01")),
-    date_labels = "%Y",
-    expand = expansion(mult = c(0.02, 0.04))
-  ) +
-  scale_y_continuous(
-    labels = label_number(scale_cut = cut_short_scale()),
-    limits = c(0, 380000),
-    expand = expansion(mult = c(0, 0.02))
-  ) +
-  scale_color_manual(values = model_pal, aesthetics = c("color", "fill")) +
-  coord_cartesian(clip = "off") +
-  labs(
-    title = "Every model missed the crash",
-    subtitle = str_glue(
-      "Four models trained on Brazilian vehicle production through <b>Dec 2019</b>, then forecasting 24 months. ",
-      "All confidently project a normal 2020 (shaded bands = 95% intervals). ",
-      "The <b style='color:{col_actual}'>actual</b> output plunges straight through every forecast as COVID shutters the plants."
+## Frame builder ------------------------------------------------------------
+# `i` is the number of futures drawn so far. `i = n_futures` with
+# `highlight = FALSE` gives the static poster.
+
+plot_frame <- function(i, highlight = TRUE) {
+  drawn <- filter(futures, frame <= i)
+  ghosts <- if (highlight) filter(drawn, frame < i) else drawn
+  current <- filter(futures, frame == i)
+  current_end <- filter(endpoints, frame == i)
+  dots <- filter(endpoints, frame <= i)
+
+  p_paths <- ggplot(mapping = aes(date, value)) +
+    annotate(
+      "rect",
+      xmin = origin,
+      xmax = max(futures$date),
+      ymin = -Inf,
+      ymax = Inf,
+      fill = "white",
+      alpha = 0.35
+    ) +
+    geom_hline(
+      yintercept = 100,
+      color = "gray40",
+      linewidth = 0.3,
+      linetype = 2
+    ) +
+    geom_line(
+      data = ghosts,
+      aes(group = window, color = direction),
+      linewidth = 0.35,
+      alpha = if (highlight) 0.18 else 0.28
+    ) +
+    geom_line(data = history, color = col_hist, linewidth = 0.9) +
+    annotate(
+      "text",
+      x = origin - 60,
+      y = y_limits[1] + 4,
+      label = "← Observed",
+      hjust = 1,
+      family = font_text,
+      size = 3.3,
+      color = "gray40"
+    ) +
+    annotate(
+      "text",
+      x = origin + 60,
+      y = y_limits[1] + 4,
+      label = "Replayed →",
+      hjust = 0,
+      family = font_text,
+      size = 3.3,
+      color = "gray40"
+    ) +
+    scale_color_manual(values = pal) +
+    scale_x_date(
+      date_breaks = "2 years",
+      date_labels = "%Y",
+      expand = expansion(mult = c(0.01, 0.02))
+    ) +
+    scale_y_continuous(breaks = y_breaks, position = "left") +
+    coord_cartesian(ylim = y_limits, clip = "off") +
+    labs(x = NULL, y = NULL)
+
+  if (highlight) {
+    label_replay <- sprintf(
+      "<span style='color:gray40'>Future %d of %d · replaying</span><br><b>%s – %s</b>",
+      i,
+      n_futures,
+      format(current$replay_start[1], "%b %Y"),
+      format(current$replay_end[1], "%b %Y")
+    )
+    label_change <- scales::label_percent(
+      accuracy = 1,
+      style_positive = "plus",
+      style_negative = "minus"
+    )(current_end$change)
+
+    p_paths <- p_paths +
+      geom_line(
+        data = current,
+        aes(color = direction),
+        linewidth = 1.3
+      ) +
+      geom_point(
+        data = current_end,
+        aes(color = direction),
+        size = 2.6
+      ) +
+      annotate(
+        "text",
+        x = current_end$date + 45,
+        y = current_end$value,
+        label = label_change,
+        hjust = 0,
+        family = font_text,
+        fontface = "bold",
+        size = 4,
+        color = pal[current_end$direction]
+      ) +
+      annotate(
+        "richtext",
+        x = min(history$date),
+        y = y_limits[2],
+        label = label_replay,
+        hjust = 0,
+        vjust = 1,
+        family = font_text,
+        size = 3.6,
+        lineheight = 1.2,
+        fill = NA,
+        label.color = NA,
+        label.padding = unit(0, "pt")
+      )
+  }
+
+  p_dots <- ggplot(dots, aes(slot, bin, color = direction)) +
+    geom_hline(
+      yintercept = 100,
+      color = "gray40",
+      linewidth = 0.3,
+      linetype = 2
+    ) +
+    geom_point(size = 1.7) +
+    scale_color_manual(values = pal) +
+    scale_x_continuous(limits = c(0.5, max_slot + 0.5), expand = expansion(0)) +
+    scale_y_continuous(breaks = y_breaks) +
+    coord_cartesian(ylim = y_limits, clip = "off") +
+    labs(x = NULL, y = NULL)
+
+  if (highlight) {
+    p_dots <- p_dots +
+      geom_point(
+        data = current_end,
+        shape = 21,
+        size = 4.2,
+        stroke = 0.9,
+        fill = NA,
+        color = col_hist
+      )
+  }
+
+  i_up <- sum(dots$direction == "up")
+  tally <- sprintf(
+    paste0(
+      "<b style='color:%s'>rose in %d</b> and ",
+      "<b style='color:%s'>fell in %d</b> of %d futures"
     ),
-    caption = "Source: Brazilian Central Bank (BCB) / Anfavea — monthly vehicle production (units) • @viniciusoike",
-    x = NULL,
-    y = NULL
-  ) +
-  theme_plot +
-  guides(
-    color = guide_legend(override.aes = list(linewidth = 1.2), order = 1),
-    fill = "none"
+    col_up,
+    i_up,
+    col_down,
+    i - i_up,
+    i
   )
+  intro <- sprintf(
+    paste0(
+      "Each future replays one real five-year stretch of inflation-adjusted ",
+      "home prices since 2001, starting from today's price (%s = 100). "
+    ),
+    format(origin, "%B %Y")
+  )
+  # Start years checked against `windows`: stretches starting 2002-2010 all
+  # end higher, 2011 is mixed, and every one from 2012 on ends lower.
+  subtitle <- if (highlight) {
+    paste0(
+      intro,
+      "So far, prices ",
+      tally,
+      ". The dots on the right stack where each one ends."
+    )
+  } else {
+    paste0(
+      intro,
+      "Prices ",
+      tally,
+      ". It looks like a coin toss, but history splits in two: nearly every ",
+      "stretch that began before 2011 rode the mortgage boom up; every one ",
+      "that began from 2012 on ended lower."
+    )
+  }
 
-# Static poster (final frame) ---------------------------------------------
+  # Dot panel drops its axes: the price scale is shared with the paths.
+  p_dots <- p_dots +
+    theme_plot +
+    theme_sub_axis_bottom(text = element_blank(), line = element_blank()) +
+    theme_sub_axis_left(text = element_blank())
+
+  p <- (p_paths + theme_plot) +
+    p_dots +
+    plot_layout(widths = c(3, 1)) +
+    plot_annotation(
+      title = "Where will Brazilian home prices be in 2031?",
+      subtitle = subtitle,
+      caption = paste0(
+        "Real residential price index (IVG-R deflated by IPCA), rebased to ",
+        format(origin, "%b %Y"),
+        " = 100. ",
+        n_futures,
+        " of the ",
+        n_windows,
+        " five-year windows since ",
+        format(min(prices$date), "%b %Y"),
+        ", drawn at random.\nSource: Banco Central do Brasil (SGS 21340, 433) ",
+        "• @viniciusoike"
+      ),
+      theme = theme_plot
+    )
+
+  return(p)
+}
+
+# Save ----------------------------------------------------------------------
+
+## Static poster ------------------------------------------------------------
 
 ggsave(
   here("2026/plots/27_animation.png"),
-  p,
-  width = 8,
-  height = 5,
-  dpi = 300
+  plot_frame(n_futures, highlight = FALSE),
+  width = 10,
+  height = 7,
+  dpi = 300,
+  device = agg_png
 )
 
-# Animate -----------------------------------------------------------------
+## Animation ----------------------------------------------------------------
+# One PNG per frame, then stitched with magick. The poster closes the loop.
 
-anim <- p +
-  transition_reveal(date) +
-  ease_aes("linear")
+frame_dir <- file.path(tempdir(), "day27_frames")
+dir.create(frame_dir, showWarnings = FALSE)
 
-gif <- animate(
-  anim,
-  nframes = 120,
-  fps = 20,
-  end_pause = 25,
-  width = 8,
-  height = 5,
-  units = "in",
-  res = 120,
-  device = "ragg_png",
-  renderer = magick_renderer(loop = TRUE)
+frame_files <- vapply(
+  seq_len(n_futures),
+  \(i) {
+    path <- file.path(frame_dir, sprintf("frame_%03d.png", i))
+    ggsave(
+      path,
+      plot_frame(i),
+      width = 10,
+      height = 7,
+      dpi = 100,
+      device = agg_png
+    )
+    return(path)
+  },
+  character(1)
 )
 
-anim_save(here("2026/plots/27_animation.gif"), gif)
+poster_file <- file.path(frame_dir, "frame_poster.png")
+ggsave(
+  poster_file,
+  plot_frame(n_futures, highlight = FALSE),
+  width = 10,
+  height = 7,
+  dpi = 100,
+  device = agg_png
+)
+
+# First futures linger so the reader learns the grammar; later ones speed up.
+delays <- c(rep(80, 5), rep(35, 15), rep(15, n_futures - 20), 500)
+
+gif <- image_read(c(frame_files, poster_file)) |>
+  image_join() |>
+  image_animate(delay = delays, optimize = TRUE)
+
+image_write(gif, here("2026/plots/27_animation.gif"))
