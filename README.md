@@ -167,7 +167,7 @@ My submissions for the 30 Day Chart Challenge.
 #### 1 - Fractions
 
 <p align="center">
-  <img width="80%" src="2025/plots/01_fraction_column_mp.png">
+  <img width="80%" src="2025/plots/01_fraction.png">
 </p>
 
 #### 2 - Slope
