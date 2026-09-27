@@ -1,528 +1,296 @@
 # Prompt: Comparisons — Fraction
-# Share of Brazilian cities with rising rental/house prices, post-pandemic.
+# Share of Brazilian cities where rents and sale prices beat inflation, as a
+# hand-built waffle: one tile per city, one grid per year.
 # Sources: FipeZap online listings (realestatebr) and IPCA inflation (rbcb).
 
 library(dplyr)
 library(ggplot2)
 
-import::from(realestatebr, get_rppi_fipezap)
-import::from(trendseries, add_trend)
+import::from(realestatebr, get_dataset)
 import::from(rbcb, get_series)
-import::from(tidyr, nest, unnest, pivot_wider)
-import::from(purrr, map)
+import::from(tidyr, pivot_wider, expand_grid)
 import::from(lubridate, year, month)
-import::from(stringr, str_wrap)
-import::from(ggtext, element_textbox_simple)
-import::from(tibble, tibble)
+import::from(ggtext, element_textbox_simple, geom_textbox)
 import::from(ragg, agg_png)
 import::from(here, here)
 
 # Data --------------------------------------------------------------------
 
-fipe <- get_rppi_fipezap()
+fipe <- get_dataset("rppi", table = "fipezap", quiet = TRUE)
+ipca <- get_series(433, start_date = as.Date("2019-01-01"), as = "tibble")
 
-dat <- fipe |>
-  filter(
-    market == "residential",
-    variable == "chg",
-    rooms == "total",
-    date >= as.Date("2019-01-01"),
-    date <= as.Date("2024-12-01")
-  )
+# Wrangle -----------------------------------------------------------------
 
-dat <- dat |>
-  filter(name_muni != "Índice Fipezap") |>
-  mutate(is_rise = ifelse(value > 0, 1L, 0L))
-
-count_dat <- dat |>
-  summarise(
-    count_rising = sum(is_rise, na.rm = TRUE),
-    count_cities = n(),
-    .by = c("date", "rent_sale")
-  ) |>
-  mutate(share_rising = count_rising / count_cities)
-
-trend_dat <- count_dat |>
-  group_by(rent_sale) |>
-  nest() |>
-  mutate(
-    trend = map(
-      data,
-      add_trend,
-      value_colname = "share_rising",
-      trend = "stl"
-    )
-  ) |>
-  unnest(trend)
-
-plot_subtitle = "<p>Share of major Brazilian cities suffering monthly increases in <b><span style = 'color:#6096ba'>rental</span></b> or <b><span style = 'color:#274c77'>house prices</span></b> (%).<br/>In the post-pandemic period, <b><span style = 'color:#6096ba'>rental prices</span></b> have consistently risen in over 50% of cities, while <b><span style = 'color:#274c77'>house prices</span></b> have increased in more than 80% of cities every month. Smooth trend estimated using STL decomposition.</p>"
-
-p_line <- ggplot(trend_dat) +
-  geom_point(
-    aes(x = date, y = share_rising, color = rent_sale),
-    shape = 21,
-    stroke = 1,
-    alpha = 0.7
-  ) +
-  geom_line(
-    aes(x = date, y = trend_stl, color = rent_sale),
-    linewidth = 1
-  ) +
-  geom_hline(yintercept = 0) +
-  geom_label(
-    data = tibble(
-      x = as.Date("2021-06-01"),
-      y = 1,
-      label = "In Jan/22, 96,4% of cities had an increase in house prices."
-    ),
-    aes(x = x, y = y, label = str_wrap(label, 18)),
-    family = "Lato",
-    size = 3,
-    color = "#274c77",
-    fill = "#f5f5f5"
-  ) +
-  geom_curve(
-    data = data.frame(
-      x = as.Date("2022-01-01"),
-      xend = as.Date("2021-10-01"),
-      y = 0.974,
-      yend = 1
-    ),
-    aes(x = x, xend = xend, y = y, yend = yend),
-    size = 0.45,
-    arrow = arrow(length = unit(0.01, "npc")),
-    color = "#1E3B5C"
-  ) +
-  geom_label(
-    data = tibble(
-      x = as.Date("2021-10-01"),
-      y = 0.2,
-      label = "Due to the Covid-19 Pandemic, in Sep/20, only 17,4% of cities had rent price increases."
-    ),
-    aes(x = x, y = y, label = str_wrap(label, 31)),
-    family = "Lato",
-    size = 3,
-    color = "#6096ba",
-    fill = "#f5f5f5"
-  ) +
-  geom_curve(
-    data = data.frame(
-      x = as.Date("2020-09-01"),
-      xend = as.Date("2021-03-01"),
-      y = 0.17,
-      yend = 0.2
-    ),
-    aes(x = x, xend = xend, y = y, yend = yend),
-    size = 0.45,
-    arrow = arrow(length = unit(0.01, "npc")),
-    curvature = -0.4,
-    color = "#386380"
-  ) +
-  scale_color_manual(
-    values = c("#6096ba", "#274c77")
-  ) +
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  scale_y_continuous(
-    breaks = seq(0.2, 1, 0.2),
-    labels = seq(20, 100, 20),
-    limits = c(NA, 1.1)
-  ) +
-  guides(color = "none") +
-  labs(
-    title = "Houses prices are soaring across Brazil",
-    subtitle = plot_subtitle,
-    caption = "Souce: FipeZap (online listings).",
-    x = NULL,
-    y = "Share of cities (%)"
-  ) +
-  theme_minimal(base_family = "Lato") +
-  theme(
-    panel.background = element_rect(color = "#F5F5F5", fill = "#F5F5F5"),
-    plot.background = element_rect(color = "#F5F5F5", fill = "#F5F5F5"),
-    panel.grid.minor = element_blank(),
-    plot.title = element_text(size = 14),
-    plot.subtitle = element_textbox_simple(family = "Lato")
-  )
-
-ipca <- get_series(433, start_date = as.Date("2010-01-01"), as = "tibble")
-
-ipca_ano <- ipca |>
+ipca_year <- ipca |>
   rename(value = `433`) |>
-  mutate(ano = year(date)) |>
-  summarise(
-    acum = prod(1 + value / 100) - 1,
-    .by = c("ano")
-  )
+  mutate(year = year(date)) |>
+  summarise(ipca = prod(1 + value / 100) - 1, .by = year)
 
-fipe_ano <- fipe |>
+# December 12-month change vs. calendar-year IPCA. Only cities with both a
+# rent and a sale series are covered in a given year.
+cities <- fipe |>
   filter(
     market == "residential",
     variable == "acum12m",
     rooms == "total",
-    date >= as.Date("2019-01-01"),
-    date <= as.Date("2024-12-01"),
-    name_muni != "Índice Fipezap"
+    month(date) == 12,
+    year(date) %in% 2019:2024,
+    name_muni != "Brazil",
+    !is.na(value)
   ) |>
-  mutate(month = month(date), ano = year(date)) |>
-  filter(month == 12)
-
-fipe_ano <- fipe_ano |>
-  select(ano, name_muni, rent_sale, fipe = value)
-
-fipe_ano <- fipe_ano |>
-  left_join(ipca_ano, by = "ano") |>
-  mutate(is_higher_ipca = ifelse(fipe > acum, 1, 0))
-
-fipe_comp <- fipe_ano |>
-  filter(!is.na(fipe)) |>
+  mutate(year = year(date)) |>
   pivot_wider(
-    id_cols = c("ano", "name_muni"),
-    names_from = "rent_sale",
-    values_from = "is_higher_ipca"
+    id_cols = c(year, name_muni),
+    names_from = rent_sale,
+    values_from = value
   ) |>
   filter(!is.na(rent), !is.na(sale)) |>
+  left_join(ipca_year, by = "year") |>
   mutate(
     category = case_when(
-      sale == 1 & rent == 1 ~ "both_rising",
-      sale == 1 & rent == 0 ~ "sale_rising",
-      sale == 0 & rent == 1 ~ "rent_rising",
-      sale == 0 & rent == 0 ~ "none_rising"
-    )
-  ) |>
-  count(ano, category) |>
-  mutate(share = n / sum(n), .by = "ano") |>
-  mutate(
-    category = factor(
-      category,
-      levels = c("none_rising", "rent_rising", "sale_rising", "both_rising")
+      sale > ipca & rent > ipca ~ "both",
+      sale > ipca ~ "sale",
+      rent > ipca ~ "rent",
+      .default = "none"
     )
   )
 
-p_col <- ggplot(fipe_comp, aes(ano, y = share, fill = category)) +
-  geom_col() +
-  geom_text(
-    aes(label = paste0(round(share * 100), "%")),
-    position = position_stack(0.5),
-    family = "Lato",
-    color = "white",
-    size = 4
+## Waffle grid -------------------------------------------------------------
+
+# Tiles fill a fixed square grid bottom-up, left to right, sorted by
+# category. Slots beyond a year's coverage stay empty.
+levels_cat <- c("both", "sale", "rent", "none", "not_covered")
+n_side <- ceiling(sqrt(max(count(cities, year)$n)))
+
+tiles <- cities |>
+  mutate(category = factor(category, levels_cat)) |>
+  arrange(year, category) |>
+  mutate(slot = row_number(), .by = year) |>
+  select(year, slot, name_muni, category)
+
+tiles <- expand_grid(year = 2019:2024, slot = seq_len(n_side^2)) |>
+  left_join(tiles, by = c("year", "slot")) |>
+  mutate(
+    category = replace(category, is.na(category), "not_covered"),
+    x = (slot - 1) %% n_side + 1,
+    y = (slot - 1) %/% n_side + 1
+  )
+
+## Highlights --------------------------------------------------------------
+
+# Outline of a set of unit tiles: keep each tile edge whose neighbour across
+# that edge is not in the set. Works for any shape, including staircases.
+outline_tiles <- function(cells) {
+  edges <- bind_rows(
+    mutate(
+      cells,
+      x0 = x - .5,
+      x1 = x + .5,
+      y0 = y - .5,
+      y1 = y - .5,
+      nx = x,
+      ny = y - 1
+    ),
+    mutate(
+      cells,
+      x0 = x - .5,
+      x1 = x + .5,
+      y0 = y + .5,
+      y1 = y + .5,
+      nx = x,
+      ny = y + 1
+    ),
+    mutate(
+      cells,
+      x0 = x - .5,
+      x1 = x - .5,
+      y0 = y - .5,
+      y1 = y + .5,
+      nx = x - 1,
+      ny = y
+    ),
+    mutate(
+      cells,
+      x0 = x + .5,
+      x1 = x + .5,
+      y0 = y - .5,
+      y1 = y + .5,
+      nx = x + 1,
+      ny = y
+    )
+  )
+  anti_join(
+    edges,
+    select(cells, year, x, y),
+    by = c("year", "nx" = "x", "ny" = "y")
+  )
+}
+
+# Sanity check: a 2x1 block has 6 outer edges
+stopifnot(nrow(outline_tiles(tibble(year = 1, x = 1:2, y = 1))) == 6)
+
+share_of <- function(yr, cat) {
+  d <- filter(tiles, year == yr, category != "not_covered")
+  n <- sum(d$category == cat)
+  list(n = n, total = nrow(d), pct = round(100 * n / nrow(d)))
+}
+
+s20 <- share_of(2020, "both")
+s21 <- share_of(2021, "none")
+s23 <- share_of(2023, "none")
+stopifnot(s23$n == 0) # the 2023 note assumes no city fell behind on both
+s24 <- share_of(2024, "both")
+key_city <- filter(tiles, year == 2019, slot == 1)$name_muni
+
+ipca22 <- round(100 * ipca_year$ipca[ipca_year$year == 2022], 1)
+rent22 <- fipe |>
+  filter(
+    name_muni == "Brazil",
+    market == "residential",
+    rent_sale == "rent",
+    variable == "acum12m",
+    rooms == "total",
+    date == as.Date("2022-12-01")
+  ) |>
+  pull(value)
+rent22 <- round(100 * rent22, 1)
+
+highlights <- bind_rows(
+  filter(tiles, year == 2019, slot == 1),
+  filter(tiles, year == 2020, category == "both"),
+  filter(tiles, year == 2021, category == "none"),
+  filter(tiles, year == 2024, category == "both")
+)
+
+notes <- tibble(
+  year = c(2019, 2020, 2021, 2022, 2023, 2024),
+  label = c(
+    glue::glue(
+      "**How to read.** Each tile is one city. The outlined tile is ",
+      "{key_city}."
+    ),
+    glue::glue(
+      "**First signs.** Only {s20$n} cities ({s20$pct}%) saw both rents and ",
+      "prices beat inflation."
+    ),
+    glue::glue(
+      "**Pandemic low.** In {s21$pct}% of cities ({s21$n} of {s21$total}), ",
+      "neither rents nor prices beat inflation."
+    ),
+    glue::glue(
+      "**Rent boom.** Even with inflation at {ipca22}%, rents grew ",
+      "{rent22}% nationwide."
+    ),
+    glue::glue(
+      "**No city left behind.** Rents or prices beat inflation in all ",
+      "{s23$total} cities."
+    ),
+    glue::glue(
+      "**Today.** In {s24$pct}% of cities ({s24$n} of {s24$total}), ",
+      "both rents and prices beat inflation."
+    )
+  )
+)
+
+# Plot --------------------------------------------------------------------
+
+offwhite <- "#f5f5f5"
+colors_cat <- c(
+  both = "#9b2226",
+  sale = "#bb3e03",
+  rent = "#ee9b00",
+  none = "#778da9",
+  not_covered = offwhite
+)
+labels_cat <- c(
+  both = "Both above inflation",
+  sale = "Only sale prices above",
+  rent = "Only rents above",
+  none = "Both below inflation",
+  not_covered = "Not covered"
+)
+
+p_waffle <- ggplot(tiles, aes(x, y)) +
+  geom_tile(
+    aes(fill = category, color = category == "not_covered"),
+    width = 0.86,
+    height = 0.86,
+    linewidth = 0.3
   ) +
-  scale_x_reverse(breaks = 2019:2024, expand = expand_scale(0)) +
-  scale_y_continuous(expand = expand_scale(0)) +
-  coord_flip() +
-  scale_fill_manual(
-    name = "Houses prices rising above inflation",
-    values = c("#778da9", "#ee9b00", "#bb3e03", "#9b2226"),
-    labels = str_wrap(
-      c(
-        "Both below inflation",
-        "Only rental prices above inflation",
-        "Only sales prices above inflation",
-        "Both rising above inflation"
-      ),
-      18
+  geom_segment(
+    data = outline_tiles(highlights),
+    aes(x = x0, xend = x1, y = y0, yend = y1),
+    linewidth = 0.8,
+    lineend = "square",
+    color = "gray10"
+  ) +
+  geom_textbox(
+    data = notes,
+    aes(x = 0.5, y = 0.2, label = label),
+    hjust = 0,
+    vjust = 1,
+    halign = 0,
+    width = unit(1, "npc"),
+    box.colour = NA,
+    fill = NA,
+    box.padding = margin(0),
+    family = "Lato",
+    size = 3.2,
+    lineheight = 1.2,
+    color = "gray20"
+  ) +
+  facet_wrap(vars(year), nrow = 1) +
+  scale_fill_manual(values = colors_cat, labels = labels_cat, name = NULL) +
+  scale_color_manual(
+    values = c(`FALSE` = NA, `TRUE` = "gray60"),
+    guide = "none"
+  ) +
+  scale_y_continuous(limits = c(-2.6, n_side + 0.5), expand = c(0, 0)) +
+  coord_equal(clip = "off") +
+  guides(
+    fill = guide_legend(
+      nrow = 1,
+      override.aes = list(color = c(NA, NA, NA, NA, "gray60"))
     )
   ) +
   labs(
-    title = "In 2024, 81% of cities had both rental prices and sales prices rising above inflation",
+    title = "Rents and home prices now beat inflation in most Brazilian cities",
+    subtitle = glue::glue(
+      "Cities by whether rents, sale prices, or both rose faster ",
+      "than inflation (IPCA) over the year. FipeZap tracks both prices in ",
+      "{min(count(cities, year)$n)} cities through 2021 and ",
+      "{max(count(cities, year)$n)} from 2022."
+    ),
+    caption = "Source: FipeZap (online listings, 12-month change in December) and IBGE (IPCA) • @viniciusoike",
     x = NULL,
     y = NULL
   ) +
-  theme_minimal(base_family = "Lato") +
+  theme_void(base_family = "Lato") +
   theme(
-    panel.background = element_rect(color = "#F5F5F5", fill = "#F5F5F5"),
-    plot.background = element_rect(color = "#F5F5F5", fill = "#F5F5F5"),
-    plot.title = element_text(size = 14),
+    plot.background = element_rect(fill = offwhite, color = offwhite),
+    plot.margin = margin(15, 20, 10, 20),
+    plot.title = element_text(size = 18, margin = margin(b = 6)),
+    plot.subtitle = element_textbox_simple(
+      size = 11,
+      color = "gray25",
+      margin = margin(b = 12)
+    ),
+    plot.caption = element_text(hjust = 0, color = "gray40", size = 8),
     legend.position = "top",
-    legend.title.position = "top",
-    panel.grid = element_blank(),
-    axis.text.y = element_text(size = 12),
-    axis.text.x = element_blank()
+    legend.justification = "left",
+    legend.text = element_text(size = 10),
+    legend.margin = margin(b = 6),
+    strip.text = element_text(size = 13, face = "bold", margin = margin(b = 4)),
+    panel.spacing = unit(1.4, "lines")
   )
 
 # Save --------------------------------------------------------------------
 
 ggsave(
-  here("2025/plots/01_fraction_lineplot.png"),
-  p_line,
-  width = 9.9,
-  height = 5.7,
+  here("2025/plots/01_fraction.png"),
+  p_waffle,
+  width = 12,
+  height = 4.3,
+  dpi = 300,
   device = agg_png
 )
-ggsave(
-  here("2025/plots/01_fraction_column.png"),
-  p_col,
-  width = 9,
-  height = 6,
-  device = agg_png
-)
-
-# Exploratory (not run) ---------------------------------------------------
-# Waffle variants, single-bar/plotly experiments and an unrelated
-# canada.cities demo that never fed a saved chart.
-
-# subdat <- fipe_ano |>
-#   filter(!is.na(fipe)) |>
-#   pivot_wider(
-#     id_cols = c("ano", "name_muni"),
-#     names_from = "rent_sale",
-#     values_from = "is_higher_ipca"
-#   ) |>
-#   mutate(
-#     category = case_when(
-#       sale == 1 & rent == 1 ~ "both_rising",
-#       sale == 1 & (rent == 0 | is.na(rent)) ~ "sale_rising",
-#       (sale == 0 | is.na(sale)) & rent == 1 ~ "rent_rising",
-#       (sale == 0 | is.na(sale)) & (rent == 0 | is.na(rent)) ~ "none_rising"
-#     )
-#   ) |>
-#   count(ano, category) |>
-#   mutate(
-#     category = factor(
-#       category,
-#       levels = c("none_rising", "rent_rising", "sale_rising", "both_rising")
-#     )
-#   ) |>
-#   arrange(category)
-
-# base_plot <- ggplot(subdat, aes(fill = category, values = n)) +
-#   geom_waffle(color = "white", flip = TRUE, size = .25, n_rows = 10) +
-#   facet_wrap(vars(ano), nrow = 2) +
-#   scale_y_continuous(
-#     breaks = c(2, 4, 6, 8, 10, 12),
-#     labels = 5 * c(2, 4, 6, 8, 10, 12)
-#   ) +
-#   scale_fill_manual(
-#     name = "Houses prices rising above inflation",
-#     values = c("#2a9d8f", "#ee9b00", "#e9c46a", "#9b2226"),
-#     labels = str_wrap(
-#       c(
-#         "Both below inflation",
-#         "Only rental prices above inflation",
-#         "Only sales prices above inflation",
-#         "Both rising above inflation"
-#       ),
-#       18
-#     )
-#   ) +
-#   coord_equal() +
-#   theme_bw(base_family = "Lato") +
-#   theme(
-#     panel.grid = element_blank(),
-#     strip.text = element_text(size = 12)
-#   )
-
-# grid <- expand_grid(
-#   x = 1:10,
-#   y = 1:7
-# )
-
-# grid$z <- 1:nrow(grid)
-
-
-# base_plot <- ggplot(
-#   subset(subdat, ano == 2020),
-#   aes(fill = category, values = n)
-# ) +
-#   geom_waffle(color = "white", flip = TRUE, size = .25, n_rows = 10) +
-#   scale_fill_manual(
-#     name = "Houses prices rising above inflation",
-#     values = c("#2a9d8f", "#ee9b00", "#e9c46a", "#9b2226"),
-#     labels = str_wrap(
-#       c(
-#         "Both below inflation",
-#         "Only rental prices above inflation",
-#         "Only sales prices above inflation",
-#         "Both rising above inflation"
-#       ),
-#       18
-#     )
-#   ) +
-#   coord_equal() +
-#   theme_bw(base_family = "Lato") +
-#   theme(
-#     panel.grid = element_blank(),
-#     strip.text = element_text(size = 12)
-#   )
-
-# Single square highlight
-# base_plot +
-#   geom_tile(
-#     data = tibble(x = 8:10, y = 5),
-#     aes(x, y),
-#     linewidth = 0.7,
-#     color = "black",
-#     fill = NA,
-#     inherit.aes = FALSE
-#   )
-
-
-# Full segment highlight
-# base_plot <- ggplot(
-#   subset(subdat, ano == 2019),
-#   aes(fill = category, values = n)
-# ) +
-#   geom_waffle(color = "white", flip = TRUE, size = .25, n_rows = 10) +
-#   scale_fill_manual(
-#     name = "Houses prices rising above inflation",
-#     values = c("#2a9d8f", "#ee9b00", "#e9c46a", "#9b2226"),
-#     labels = str_wrap(
-#       c(
-#         "Both below inflation",
-#         "Only rental prices above inflation",
-#         "Only sales prices above inflation",
-#         "Both rising above inflation"
-#       ),
-#       18
-#     )
-#   ) +
-#   coord_equal() +
-#   theme_bw(base_family = "Lato") +
-#   theme(
-#     panel.grid = element_blank(),
-#     strip.text = element_text(size = 12)
-#   )
-
-# df_lines <- tibble(
-#   x = c(0.5, 3.5, 0.5, 0.5, 10.5, 3.5),
-#   xend = c(10.5, 10.5, 3.5, 0.5, 10.5, 3.5),
-#   y = c(0.5, 3.5, 4.5, 0.5, 0.5, 3.5),
-#   yend = c(0.5, 3.5, 4.5, 4.5, 3.5, 4.5)
-# )
-
-# library(ggtext)
-
-# font_text = "Lato"
-
-# base_plot +
-#   geom_segment(
-#     data = df_lines,
-#     aes(x = x, xend = xend, y = y, yend = yend),
-#     linewidth = 0.7,
-#     color = "black",
-#     inherit.aes = FALSE
-#   ) +
-#   geom_richtext(
-#     data = tibble(
-#       x = 5.5,
-#       y = 7.5,
-#       label = "In 2019, 66.7% of cities saw <span style='color:#2a9d8f'>rental and<br>house price increases below inflation</span>."
-#     ),
-#     aes(x = x, y = y, label = label),
-#     family = font_text,
-#     size = 3,
-#     inherit.aes = FALSE
-#   ) +
-#   scale_y_continuous(limits = c(NA, 8)) +
-#   theme(
-#     axis.text = element_blank(),
-#     axis.title = element_blank(),
-#     axis.ticks = element_blank()
-#   )
-
-
-# ggplot(grid, aes(x, y, fill = z)) +
-#   geom_tile(width = 0.9, height = 0.9)
-
-# library(plotly)
-
-# fipe_comp <- fipe_ano |>
-#   filter(!is.na(fipe)) |>
-#   summarise(
-#     count_rising = sum(is_higher_ipca),
-#     count_cities = n(),
-#     .by = c("ano", "rent_sale")
-#   ) |>
-#   mutate(
-#     share_rising = count_rising / count_cities,
-#   )
-
-# share_rising <- dat |>
-#   pivot_wider(
-#     id_cols = c("date", "name_muni"),
-#     names_from = "rent_sale",
-#     values_from = "is_rise"
-#   ) |>
-#   filter(!is.na(rent), !is.na(sale)) |>
-#   mutate(
-#     category = case_when(
-#       sale == 1 & rent == 1 ~ "both_rising",
-#       sale == 1 & rent == 0 ~ "sale_rising",
-#       sale == 0 & rent == 1 ~ "rent_rising",
-#       sale == 0 & rent == 0 ~ "none_rising"
-#     )
-#   ) |>
-#   count(date, category) |>
-#   mutate(share = n / sum(n), .by = "date")
-
-
-# dfcol <- share_rising |>
-#   filter(date == max(date)) |>
-#   mutate(
-#     category = factor(
-#       category,
-#       levels = c("none_rising", "rent_rising", "sale_rising", "both_rising")
-#     )
-#   )
-
-# ggplot(dfcol, aes(x = 1, y = share, fill = category)) +
-#   geom_col(color = "white") +
-#   geom_text(
-#     aes(label = round(share * 100, 1)),
-#     position = position_stack(0.5),
-#     color = "white",
-#     family = "Lato",
-#     size = 5
-#   ) +
-#   annotate(
-#     "text",
-#     x = 1.6,
-#     y = 0.3,
-#     label = "In 66.7% of cities, both rental and sales prices are rising."
-#   ) +
-#   annotate(
-#     "text",
-#     x = 0.3,
-#     y = 0.5,
-#     label = "Only sales prices are rising."
-#   ) +
-#   coord_flip() +
-#   scale_fill_manual(values = c("#778da9", "#ee9b00", "#bb3e03", "#9b2226")) +
-#   theme_void() +
-#   theme(
-#     plot.margin = margin(5, 0, 5, 0)
-#   )
-
-
-# Convert to plotly
-# ggplotly(base_plot, tooltip = c("text", "")) %>%
-#   layout(
-#     title = list(
-#       text = "<b>Interactive Housing Market Heat Map</b><br><sup>Price Growth vs Inflation (2019-2024)</sup>",
-#       font = list(size = 16)
-#     ),
-#     showlegend = TRUE,
-#     margin = list(t = 80, b = 50, l = 50, r = 150)
-#   ) %>%
-#   config(
-#     displayModeBar = TRUE,
-#     displaylogo = FALSE,
-#     modeBarButtonsToRemove = c(
-#       "pan2d",
-#       "select2d",
-#       "lasso2d",
-#       "autoScale2d",
-#       "hoverClosestCartesian",
-#       "hoverCompareCartesian"
-#     )
-#   )
-
-# library(plotly)
-# data(canada.cities, package = "maps")
-# viz <- ggplot(canada.cities, aes(long, lat)) +
-#   borders(regions = "canada") +
-#   coord_equal() +
-#   geom_point(aes(text = name, size = pop), colour = "red", alpha = 1 / 2)
-# ggplotly(viz, tooltip = c("text", "size"))
-
-# head(canada.cities)
