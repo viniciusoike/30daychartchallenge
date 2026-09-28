@@ -10,6 +10,8 @@ import::from(here, here)
 import::from(data.table, fread)
 import::from(countrycode, countrycode)
 import::from(ggrepel, geom_text_repel)
+import::from(MetBrewer, met.brewer)
+import::from(colorspace, darken)
 
 # Data --------------------------------------------------------------------
 
@@ -95,7 +97,7 @@ trade <- trade |>
     total = exports + imports,
     balance = exports - imports
   ) |>
-  mutate(across(c(exports, imports, total), log))
+  mutate(across(c(exports, imports, total, balance), \(x) x / 1e9))
 
 
 # Keep the partners that actually drive Brazil's trade.
@@ -103,8 +105,31 @@ plot_data <- trade |>
   slice_max(total, n = 30) |>
   mutate(
     is_key = iso3 %in% c("CHN", "USA"),
-    face = if_else(is_key, "bold", "plain")
+    face = if_else(is_key, "bold", "plain"),
+    # Push labels clear of the bubble: bigger bubbles need a larger nudge.
+    nudge = 0.03 + 0.09 * sqrt(total / max(total))
   )
+
+# Label only the partners that tell the story; the Asian/European cluster
+# near $2-5B stays unlabelled to avoid clutter.
+labelled <- c(
+  "CHN",
+  "USA",
+  "ARG",
+  "MEX",
+  "CHL",
+  "CAN",
+  "NLD",
+  "ESP",
+  "DEU",
+  "FRA",
+  "ITA",
+  "RUS",
+  "IND",
+  "SGP",
+  "ARE",
+  "EGY"
+)
 
 #  [1] "China"                "United States"
 #  [3] "Argentina"            "Germany"
@@ -156,28 +181,31 @@ code <- c(
 
 # Plot --------------------------------------------------------------------
 
-offwhite <- "#fefefe"
-col_surplus <- "#2C7A7B" # Brazil sells more than it buys
-col_deficit <- "#C53030" # Brazil buys more than it sells
+offwhite <- "#F7F5F0"
+col_surplus <- "#2A6F6F" # Brazil sells more than it buys
+col_deficit <- "#A23B2A" # Brazil buys more than it sells
 
-font_text <- "Roboto Slab"
+font_title <- "Futura"
+font_text <- "Futura"
+pal_name <- "Redon"
 
-region_pal <- c(
-  "Asia" = "#D69E2E",
-  "Latin America" = "#2C7A7B",
-  "North America" = "#C53030",
-  "Europe" = "#1E3A5F",
-  "Africa" = "#805AD5",
-  "Oceania" = "#475569"
+regions <- c(
+  "Asia",
+  "Latin America",
+  "North America",
+  "Europe",
+  "Africa",
+  "Oceania"
 )
+region_pal <- setNames(met.brewer(pal_name, length(regions)), regions)
 
 # Shared limits so the 45-degree balanced-trade line reads diagonally.
 lim <- range(c(plot_data$exports, plot_data$imports))
-# lim <- c(lim[1] * 0.6, lim[2] * 1.4)
+log_breaks <- c(1, 2, 5, 10, 20, 50, 100)
 
 theme_plot <- theme_minimal(base_family = font_text) +
   theme_sub_plot(
-    title = element_text(size = 16, family = "Georgia"),
+    title = element_text(size = 16, family = font_title, face = "bold"),
     subtitle = element_textbox_simple(
       size = 10,
       color = "gray40",
@@ -193,59 +221,88 @@ theme_plot <- theme_minimal(base_family = font_text) +
   ) +
   theme_sub_legend(
     position = "bottom",
-    title = element_text(size = 9, family = "Lora")
+    title = element_text(size = 9)
   )
 
-ggplot(plot_data, aes(imports, exports)) +
+bubbles <- ggplot(plot_data, aes(imports, exports)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray55") +
-  ggrepel::geom_label_repel(
-    aes(label = iso3, fontface = face),
+  geom_point(
+    aes(size = total, fill = region),
+    shape = 21,
+    color = "black",
+    alpha = 0.8
+  ) +
+  annotate(
+    "richtext",
+    x = lim[1],
+    y = lim[2],
+    hjust = 0,
+    vjust = 1,
+    label = str_glue(
+      "<b style='color:{col_surplus}'>Brazil sells more<br>than it buys</b>"
+    ),
     family = font_text,
-    size = 2,
-    max.overlaps = Inf,
-    segment.color = "gray20",
-    box.padding = 0.4
+    size = 3.5,
+    fill = NA,
+    label.color = NA
   ) +
-  geom_point(aes(size = total, fill = region), shape = 21, color = "black") +
-  scale_x_continuous(
-    expand = expansion(mult = c(0.1, 0.1)),
-    limits = lim,
+  annotate(
+    "richtext",
+    x = lim[2],
+    y = lim[1],
+    hjust = 1,
+    vjust = 0,
+    label = str_glue(
+      "<b style='color:{col_deficit}'>Brazil buys more<br>than it sells</b>"
+    ),
+    family = font_text,
+    size = 3.5,
+    fill = NA,
+    label.color = NA
   ) +
-  scale_y_continuous(
+  geom_label(
+    data = filter(plot_data, iso3 %in% labelled),
+    aes(label = iso3, colour = region, fontface = face, nudge_x = nudge),
+    family = font_text,
+    size = 2.5,
+    hjust = 0,
+    border.colour = "white",
+    label.padding = unit(0.1, "lines"),
+    show.legend = FALSE
+  ) +
+  scale_x_log10(
+    breaks = log_breaks,
+    labels = label_dollar(accuracy = 1, suffix = "B"),
     expand = expansion(mult = c(0.1, 0.1)),
     limits = lim
   ) +
-  scale_size(range = c(2, 10), guide = "none") +
+  scale_y_log10(
+    breaks = log_breaks,
+    labels = label_dollar(accuracy = 1, suffix = "B"),
+    expand = expansion(mult = c(0.1, 0.1)),
+    limits = lim
+  ) +
+  scale_size(range = c(3, 20), guide = "none") +
   scale_fill_manual(values = region_pal) +
+  scale_colour_manual(values = darken(region_pal, 0.4)) +
+  labs(
+    title = "Brazil sells more than it buys to most of its top partners",
+    subtitle = str_glue(
+      "Exports to and imports from Brazil's 30 largest trading partners in ",
+      "{ref_year}. Partners above the dashed line buy more from Brazil than ",
+      "they sell to it. <b>China</b> alone leaves Brazil a US$31 billion ",
+      "surplus; <b>Russia</b> and <b>Germany</b> run the largest deficits. ",
+      "Bubble size shows total bilateral trade."
+    ),
+    caption = str_glue(
+      "Source: Comex Stat / MDIC ({ref_year}), FOB values • @viniciusoike"
+    ),
+    x = "Brazil's imports from partner (US$, log scale)",
+    y = "Brazil's exports to partner (US$, log scale)",
+    fill = "Region"
+  ) +
   theme_plot +
-  guides(color = guide_legend(override.aes = list(size = 4)))
-
-
-# annotate(
-#   "richtext", x = lim[1] * 1.15, y = lim[2] * 0.85, hjust = 0,
-#   label = sprintf("<b style='color:%s'>Brazil sells more<br>than it buys</b>", col_surplus),
-#   family = font_text, size = 3, fill = NA, label.color = NA
-# ) +
-# annotate(
-#   "richtext", x = lim[2] * 0.85, y = lim[1] * 1.15, hjust = 1,
-#   label = sprintf("<b style='color:%s'>Brazil buys more<br>than it sells</b>", col_deficit),
-#   family = font_text, size = 3, fill = NA, label.color = NA
-# ) +
-
-# labs(
-#   title = "Who Brazil trades with — and who it sells more to than it buys",
-#   subtitle = str_glue(
-#     "Brazil's top 28 trading partners in {ref_year}, by exports to vs. imports from each (US$ billion, FOB, log scale). ",
-#     "Bubble size is total bilateral trade. Points above the line are <b style='color:{col_surplus}'>surpluses</b>; ",
-#     "below, <b style='color:{col_deficit}'>deficits</b>. <b>China</b> alone buys far more from Brazil than it sells back."
-#   ),
-#   caption = str_glue(
-#     "Source: Comex Stat / MDIC ({ref_year}) • @viniciusoike"
-#   ),
-#   x = "Imports from partner",
-#   y = "Exports to partner",
-#   color = NULL
-# )
+  guides(fill = guide_legend(override.aes = list(size = 4)))
 
 ggsave(
   here("2026/plots/14_trade.png"),
