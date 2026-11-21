@@ -15,8 +15,6 @@ Work is organized by year (`2025/`, `2026/`), each with the same three subfolder
 - `YEAR/plots/NN_<prompt>.png` — committed output images, referenced by the README gallery.
 - `2026/ideas.txt` — the planning checklist. Each day is listed under its prompt category; `[X]` marks a completed day. Consult and update this when adding a day.
 - `README.md` — a gallery embedding the committed PNGs, newest year first. Add an entry here when a new chart is finished (commits like "Update README gallery with Days …" do this).
-- `plots/` (repo root) — scratch/temp output (`temp_*.png`); not the canonical location.
-
 There is no build, test, or lint setup. The Rproj uses 2-space indent, UTF-8.
 
 ## Running a script
